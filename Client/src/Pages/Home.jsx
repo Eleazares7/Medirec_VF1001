@@ -1,7 +1,7 @@
 import React from 'react'
-import SearchBar from '../Components/SerachBar'
 import Navbar from '../Components/NavBar'
 import Banner from '../Components/Banner'
+
 
 
 const Home = () => {

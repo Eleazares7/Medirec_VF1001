@@ -93,7 +93,7 @@ const Banner = () => {
 
       {/* Contenido principal */}
       <motion.div className="container mx-auto px-6 py-16 flex flex-col items-center z-10" variants={containerVariants}>
-        <motion.div className="text-center mb-16" variants={childVariants}>
+        <motion.div className="text-center mb-8" variants={childVariants}>
           <motion.h1
             className="text-5xl md:text-6xl font-bold mb-6"
             initial={{ scale: 0.3 }}
