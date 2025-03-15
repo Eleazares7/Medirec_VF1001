@@ -65,6 +65,7 @@ const Banner = () => {
         transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
         style={{ backgroundSize: '200% 200%' }}
       />
+
       <motion.div
         className="absolute inset-0 opacity-30"
         animate={{ opacity: [0.3, 0.6, 0.3] }}
@@ -72,6 +73,7 @@ const Banner = () => {
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,125,128,0.2)_70%)]" />
       </motion.div>
+
       <motion.svg
         className="absolute top-10 left-10 w-32 h-32 text-teal-600 opacity-20"
         fill="none"
@@ -81,6 +83,7 @@ const Banner = () => {
       >
         <path stroke="currentColor" strokeWidth="2" d="M12 4.5v15m7.5-7.5h-15" />
       </motion.svg>
+
       <motion.svg
         className="absolute bottom-20 right-20 w-40 h-40 text-teal-500 opacity-20"
         fill="none"
@@ -108,7 +111,7 @@ const Banner = () => {
             animate={{ x: 0 }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
           >
-            Descubre consultas médicas de calidad con profesionales dedicados. 
+            Descubre consultas médicas de calidad con profesionales dedicados.
             Agenda hoy y únete a miles de pacientes satisfechos.
           </motion.p>
           <motion.button
@@ -180,6 +183,7 @@ const Banner = () => {
           ))}
         </motion.div>
       </motion.div>
+
     </motion.section>
   );
 };
