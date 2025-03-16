@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useDropzone } from 'react-dropzone';
 import Swal from 'sweetalert2';
 import { FaEye, FaEyeSlash, FaQuestionCircle } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom'; // Añadir para redirección
 import Navbar from '../../Components/NavBar';
-import { Navigate } from 'react-router-dom';
 
 const RegisterPatient = () => {
+    const navigate = useNavigate(); // Para redirigir
     const [isVisible, setIsVisible] = useState(false);
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
@@ -146,49 +147,29 @@ const RegisterPatient = () => {
             const response = await fetch('http://localhost:5000/users/register-patient', {
                 method: 'POST',
                 body: formDataToSend,
+                credentials: 'include', // Añadir esto
             });
 
             const data = await response.json();
             if (response.ok) {
                 Swal.fire({
                     icon: 'success',
-                    title: '¡Éxito!',
-                    text: data.message || 'Paciente registrado exitosamente',
+                    title: '¡OTP Enviado!',
+                    text: data.message || 'Revisa tu correo para verificar el OTP.',
                     confirmButtonText: 'Aceptar',
                     customClass: {
                         popup: 'bg-teal-50 rounded-lg shadow-lg',
                         title: 'text-2xl font-bold text-teal-800',
                         confirmButton: 'bg-teal-600 text-white hover:bg-teal-500',
                     },
+                }).then(() => {
+                    navigate('/otpScreen', { state: { email: formData.email } });
                 });
-                setFormData({
-                    nombre: '',
-                    telefono: '',
-                    fechaNacimiento: '',
-                    calle: '',
-                    numeroExterior: '',
-                    entreCalle1: '',
-                    entreCalle2: '',
-                    codigoPostal: '',
-                    asentamiento: '',
-                    municipio: '',
-                    estado: '',
-                    pais: 'México',
-                    alergias: '',
-                    antecedentes_medicos: '',
-                    email: '',
-                    contrasena: '',
-                    confirmarContrasena: '',
-                    foto: null,
-                });
-                setPreviewFoto(null);
-                setColonias([]);
-                setStep(1);
             } else {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: data.error || 'No se pudo registrar el paciente.',
+                    text: data.error || 'No se pudo enviar el OTP.',
                     confirmButtonText: 'Cerrar',
                     customClass: {
                         popup: 'bg-teal-50 rounded-lg shadow-lg',
@@ -202,7 +183,7 @@ const RegisterPatient = () => {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: 'Error al registrar el paciente. Por favor, intenta de nuevo.',
+                text: 'Error al procesar la solicitud. Por favor, intenta de nuevo.',
                 confirmButtonText: 'Cerrar',
                 customClass: {
                     popup: 'bg-teal-50 rounded-lg shadow-lg',

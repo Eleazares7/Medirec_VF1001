@@ -1,38 +1,33 @@
 import express from "express";
 import db from "../Config/db.js";
 import multer from "multer";
-import path from "path"
-import bcrypt from "bcrypt"
+import path from "path";
+import bcrypt from "bcrypt";
 import { fileURLToPath } from 'url';
+import axios from 'axios';
+import { log } from "console";
+
 
 const router = express.Router();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-router.get('/usuarios', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT * FROM usuarios');
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: 'Error al obtener usuarios' });
-    }
-});
-
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, '../uploads')); // Ruta relativa desde routes/
+        cb(null, path.join(__dirname, '../uploads'));
     },
     filename: (req, file, cb) => {
         cb(null, Date.now() + '-' + file.originalname);
     },
 });
 const upload = multer({ storage });
+const app = express();
 
-// Ruta para registrar paciente
+
+
 router.post('/register-patient', upload.single('foto'), async (req, res) => {
     try {
-        // Desestructuramos los campos de req.body
         const {
             nombre,
             telefono,
@@ -53,26 +48,90 @@ router.post('/register-patient', upload.single('foto'), async (req, res) => {
             confirmarContrasena,
         } = req.body;
 
-        // Datos de la foto (si se subió una)
         const foto = req.file ? req.file.filename : null;
         const fotoMimeType = req.file ? req.file.mimetype : null;
 
-        // Validación de contraseñas
         if (contrasena !== confirmarContrasena) {
             return res.status(400).json({ error: 'Las contraseñas no coinciden' });
         }
 
-        // Hashear la contraseña
+        req.session.tempUserData = {
+            nombre,
+            telefono,
+            fechaNacimiento,
+            calle,
+            numeroExterior,
+            entreCalle1,
+            entreCalle2,
+            codigoPostal,
+            asentamiento,
+            municipio,
+            estado,
+            pais,
+            alergias,
+            antecedentes_medicos,
+            email,
+            contrasena,
+            foto,
+            fotoMimeType,
+        };
+
+        console.log('ID de sesión en /register-patient:', req.sessionID);
+        console.log('Datos guardados en sesión:', req.session.tempUserData);
+
+        const otpResponse = await axios.post('http://localhost:5000/2fa/send', { email });
+        if (!otpResponse.data.success) {
+            return res.status(500).json({ error: otpResponse.data.message || 'Error al enviar el OTP' });
+        }
+
+        res.status(200).json({ message: 'OTP enviado. Por favor, verifica tu correo.', redirectTo: '/otpScreen' });
+    } catch (error) {
+        console.error('Error en /api/register-patient:', error);
+        res.status(500).json({ error: 'Error al procesar la solicitud' });
+    }
+});
+
+router.post('/save-patient-after-otp', async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        console.log('ID de sesión en /save-patient-after-otp:', req.sessionID);
+        console.log('Datos en sesión:', req.session.tempUserData);
+
+        if (!req.session.tempUserData || req.session.tempUserData.email !== email) {
+            return res.status(400).json({ error: 'Datos temporales no encontrados o inválidos' });
+        }
+
+        const {
+            nombre,
+            telefono,
+            fechaNacimiento,
+            calle,
+            numeroExterior,
+            entreCalle1,
+            entreCalle2,
+            codigoPostal,
+            asentamiento,
+            municipio,
+            estado,
+            pais,
+            alergias,
+            antecedentes_medicos,
+            email: storedEmail,
+            contrasena,
+            foto,
+            fotoMimeType,
+        } = req.session.tempUserData;
+
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(contrasena, saltRounds);
 
-        // Insertar en la tabla usuarios
         const usuarioQuery = `
-  INSERT INTO usuarios (email, contrasena, rol, nombre, foto_url, foto_mime_type, telefono)
-  VALUES (?, ?, 'paciente', ?, ?, ?, ?)
-`;
+            INSERT INTO usuarios (email, contrasena, rol, nombre, foto_url, foto_mime_type, telefono)
+            VALUES (?, ?, 'paciente', ?, ?, ?, ?)
+        `;
         const [usuarioResult] = await db.query(usuarioQuery, [
-            email,
+            storedEmail,
             hashedPassword,
             nombre,
             foto,
@@ -80,14 +139,12 @@ router.post('/register-patient', upload.single('foto'), async (req, res) => {
             telefono,
         ]);
 
-        // Obtener el ID del usuario insertado
         const usuarioId = usuarioResult.insertId;
 
-        // Insertar en la tabla pacientes
         const pacienteQuery = `
-  INSERT INTO pacientes (id, fecha_nacimiento, calle, numero_exterior, entre_calle_1, entre_calle_2, codigo_postal, asentamiento, municipio, estado, pais, alergias, antecedentes_medicos)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`;
+            INSERT INTO pacientes (id, fecha_nacimiento, calle, numero_exterior, entre_calle_1, entre_calle_2, codigo_postal, asentamiento, municipio, estado, pais, alergias, antecedentes_medicos)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
         await db.query(pacienteQuery, [
             usuarioId,
             fechaNacimiento,
@@ -104,13 +161,14 @@ router.post('/register-patient', upload.single('foto'), async (req, res) => {
             antecedentes_medicos,
         ]);
 
-        // Respuesta exitosa
+        delete req.session.tempUserData;
         res.status(201).json({ message: 'Paciente registrado exitosamente' });
     } catch (error) {
-        console.error('Error en /api/register-patient:', error);
-        res.status(500).json({ error: 'Error al registrar el paciente' });
+        console.error('Error en /save-patient-after-otp:', error);
+        res.status(500).json({ error: 'Error al guardar los datos del paciente' });
     }
 });
+
 
 //Ruta para obtener dirección a traves de código postal
 router.get('/codigo-postal/:cp', async (req, res) => {
@@ -155,10 +213,5 @@ router.get('/codigo-postal/:cp', async (req, res) => {
         });
     }
 });
-
-
-
-
-
 
 export default router;
