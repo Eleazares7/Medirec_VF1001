@@ -6,6 +6,11 @@ import { FaEye, FaEyeSlash, FaQuestionCircle } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom'; // Añadir para redirección
 import Navbar from '../../Components/NavBar';
 
+import variants from "../../Utils/RegisterPatient/animations.js"
+import showPasswordRequirements from '../../Utils/RegisterPatient/modals.js';
+
+const [childVariants, containerVariants, buttonVariants] = variants;
+
 const RegisterPatient = () => {
     const navigate = useNavigate(); // Para redirigir
     const [isVisible, setIsVisible] = useState(false);
@@ -138,19 +143,114 @@ const RegisterPatient = () => {
             return;
         }
 
+
+
         const formDataToSend = new FormData();
         Object.keys(formData).forEach((key) => {
             formDataToSend.append(key, formData[key]);
         });
 
+        //Valdiar que el gmail no sea duplicado
+        try {
+            const response = await fetch(`http://localhost:5000/validation/emailValidation?email=${encodeURIComponent(formData.email)}`, {
+                method: 'GET',
+                credentials: 'include',
+            });
+            const data = await response.json();
+
+
+            console.log(data.success);
+
+            if (data.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: `${data.message}`,
+                    confirmButtonText: 'Cerrar',
+                    customClass: {
+                        popup: 'bg-teal-50 rounded-lg shadow-lg',
+                        title: 'text-2xl font-bold text-teal-800',
+                        confirmButton: 'bg-teal-600 text-white hover:bg-teal-500',
+                    },
+                })
+                return;
+            }
+
+
+        } catch (error) {
+            console.log(`Error el verfiicar el email ${error}`);
+            return;
+        }
+
+        // Validar fecha de nacimiento correcta
+        try {
+            const response = await fetch(`http://localhost:5000/validation/birthdateValidation?fechaNacimiento=${encodeURIComponent(formData.fechaNacimiento)}`, {
+                method: 'GET',
+                credentials: 'include',
+            });
+
+            const data = await response.json();
+            console.log(data.success);
+
+            if (data.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: `${data.message}`,
+                    confirmButtonText: 'Cerrar',
+                    customClass: {
+                        popup: 'bg-teal-50 rounded-lg shadow-lg',
+                        title: 'text-2xl font-bold text-teal-800',
+                        confirmButton: 'bg-teal-600 text-white hover:bg-teal-500',
+                    },
+                })
+                return;
+            }
+        } catch (error) {
+            console.error('Error al validar fecha de nacimiento' + error)
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://localhost:5000/validation/passwordValidation?contrasena=${encodeURIComponent(formData.contrasena)}`, {
+                method: 'GET',
+                credentials: 'include',
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: `${data.message}`,
+                    confirmButtonText: 'Cerrar',
+                    customClass: {
+                        popup: 'bg-teal-50 rounded-lg shadow-lg',
+                        title: 'text-2xl font-bold text-teal-800',
+                        confirmButton: 'bg-teal-600 text-white hover:bg-teal-500',
+                    },
+                })
+                return;
+            }
+
+        } catch (error) {
+            console.error(`Error al validar la contraseña ${error}`)
+            return;
+        }
+
+
+
         try {
             const response = await fetch('http://localhost:5000/users/register-patient', {
                 method: 'POST',
                 body: formDataToSend,
-                credentials: 'include', // Añadir esto
+                credentials: 'include',
             });
 
             const data = await response.json();
+            console.log(data);
+
             if (response.ok) {
                 Swal.fire({
                     icon: 'success',
@@ -166,10 +266,11 @@ const RegisterPatient = () => {
                     navigate('/otpScreen', { state: { email: formData.email } });
                 });
             } else {
+                // Mostrar alerta con el mensaje del backend
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: data.error || 'No se pudo enviar el OTP.',
+                    text: data.message || 'No se pudo enviar el OTP.',
                     confirmButtonText: 'Cerrar',
                     customClass: {
                         popup: 'bg-teal-50 rounded-lg shadow-lg',
@@ -194,64 +295,13 @@ const RegisterPatient = () => {
         }
     };
 
-    const showPasswordRequirements = () => {
-        Swal.fire({
-            title: 'Requisitos de Contraseña',
-            html: `
-                <ul style="text-align: left; color: #0f766e;">
-                    <li>Mínimo 8 caracteres</li>
-                    <li>Al menos una letra mayúscula</li>
-                    <li>Al menos un número</li>
-                    <li>Al menos un carácter especial (ej. !@#)</li>
-                </ul>
-            `,
-            icon: 'info',
-            confirmButtonText: 'Cerrar',
-            customClass: {
-                popup: 'bg-teal-50 rounded-lg shadow-lg',
-                title: 'text-2xl font-bold text-teal-800',
-                confirmButton: 'bg-teal-600 text-white hover:bg-teal-500',
-            },
-        });
-    };
+
 
     const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
     const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
-    const containerVariants = {
-        hidden: { opacity: 0, y: 50 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: { duration: 1, ease: 'easeOut', staggerChildren: 0.3 },
-        },
-    };
 
-    const childVariants = {
-        hidden: { opacity: 0, x: 50 },
-        visible: {
-            opacity: 1,
-            x: 0,
-            transition: {
-                duration: 0.7,
-                ease: 'easeInOut',
-            },
-        },
-        exit: {
-            opacity: 0,
-            x: -50,
-            transition: {
-                duration: 0.7,
-                ease: 'easeInOut',
-            },
-        },
-    };
 
-    const buttonVariants = {
-        hover: { scale: 1.1, transition: { duration: 0.3 } },
-        tap: { scale: 0.95 },
-        pulse: { scale: [1, 1.05, 1], transition: { duration: 2, repeat: Infinity } },
-    };
 
     return (
         <>
@@ -262,12 +312,14 @@ const RegisterPatient = () => {
                 animate={isVisible ? 'visible' : 'hidden'}
                 variants={containerVariants}
             >
+
                 <motion.div
                     className="absolute inset-0 bg-gradient-to-br from-teal-900 via-teal-800 to-teal-700"
                     animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
                     transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
                     style={{ backgroundSize: '200% 200%' }}
                 />
+
                 <motion.div
                     className="absolute inset-0 opacity-30"
                     animate={{ opacity: [0.3, 0.6, 0.3] }}

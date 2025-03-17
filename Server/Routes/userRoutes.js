@@ -5,7 +5,7 @@ import path from "path";
 import bcrypt from "bcrypt";
 import { fileURLToPath } from 'url';
 import axios from 'axios';
-import { log } from "console";
+
 
 
 const router = express.Router();
@@ -22,74 +22,78 @@ const storage = multer.diskStorage({
     },
 });
 const upload = multer({ storage });
-const app = express();
 
 
 
-router.post('/register-patient', upload.single('foto'), async (req, res) => {
-    try {
-        const {
-            nombre,
-            telefono,
-            fechaNacimiento,
-            calle,
-            numeroExterior,
-            entreCalle1,
-            entreCalle2,
-            codigoPostal,
-            asentamiento,
-            municipio,
-            estado,
-            pais,
-            alergias,
-            antecedentes_medicos,
-            email,
-            contrasena,
-            confirmarContrasena,
-        } = req.body;
 
-        const foto = req.file ? req.file.filename : null;
-        const fotoMimeType = req.file ? req.file.mimetype : null;
+router.post('/register-patient', upload.single('foto'),
+    async (req, res) => {
+        try {
+            const {
+                nombre,
+                telefono,
+                fechaNacimiento,
+                calle,
+                numeroExterior,
+                entreCalle1,
+                entreCalle2,
+                codigoPostal,
+                asentamiento,
+                municipio,
+                estado,
+                pais,
+                alergias,
+                antecedentes_medicos,
+                email,
+                contrasena,
+                confirmarContrasena,
+            } = req.body;
 
-        if (contrasena !== confirmarContrasena) {
-            return res.status(400).json({ error: 'Las contraseñas no coinciden' });
+            const foto = req.file ? req.file.filename : null;
+            const fotoMimeType = req.file ? req.file.mimetype : null;
+
+            if (contrasena !== confirmarContrasena) {
+                return res.status(400).json({ message: 'Las contraseñas no coinciden' });
+            }
+
+
+            // Llamar al endpoint 2fa/send para enviar OTP
+            const otpResponse = await axios.post('http://localhost:5000/2fa/send', { email });
+            console.log(otpResponse);
+
+
+            if (!otpResponse.data.success) {
+                return res.status(400).json({ message: otpResponse.data.message || 'Error al enviar el OTP' });
+            }
+
+            // Guardar datos en la sesión solo si el OTP se envía correctamente
+            req.session.tempUserData = {
+                nombre,
+                telefono,
+                fechaNacimiento,
+                calle,
+                numeroExterior,
+                entreCalle1,
+                entreCalle2,
+                codigoPostal,
+                asentamiento,
+                municipio,
+                estado,
+                pais,
+                alergias,
+                antecedentes_medicos,
+                email,
+                contrasena,
+                foto,
+                fotoMimeType,
+            };
+
+            res.status(200).json({ message: 'OTP enviado. Por favor, verifica tu correo.', redirectTo: '/otpScreen' });
+        } catch (error) {
+            console.error('Error en /users/register-patient:', error);
+            res.status(500).json({ message: 'Error al procesar la solicitud' });
         }
-
-        req.session.tempUserData = {
-            nombre,
-            telefono,
-            fechaNacimiento,
-            calle,
-            numeroExterior,
-            entreCalle1,
-            entreCalle2,
-            codigoPostal,
-            asentamiento,
-            municipio,
-            estado,
-            pais,
-            alergias,
-            antecedentes_medicos,
-            email,
-            contrasena,
-            foto,
-            fotoMimeType,
-        };
-
-        console.log('ID de sesión en /register-patient:', req.sessionID);
-        console.log('Datos guardados en sesión:', req.session.tempUserData);
-
-        const otpResponse = await axios.post('http://localhost:5000/2fa/send', { email });
-        if (!otpResponse.data.success) {
-            return res.status(500).json({ error: otpResponse.data.message || 'Error al enviar el OTP' });
-        }
-
-        res.status(200).json({ message: 'OTP enviado. Por favor, verifica tu correo.', redirectTo: '/otpScreen' });
-    } catch (error) {
-        console.error('Error en /api/register-patient:', error);
-        res.status(500).json({ error: 'Error al procesar la solicitud' });
-    }
-});
+    });
 
 router.post('/save-patient-after-otp', async (req, res) => {
     try {
@@ -168,7 +172,6 @@ router.post('/save-patient-after-otp', async (req, res) => {
         res.status(500).json({ error: 'Error al guardar los datos del paciente' });
     }
 });
-
 
 //Ruta para obtener dirección a traves de código postal
 router.get('/codigo-postal/:cp', async (req, res) => {
