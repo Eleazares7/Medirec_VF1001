@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'; // Añadir para nav
 import { motion } from 'framer-motion';
 import Swal from 'sweetalert2';
 
-import variants from '../Utils/RegisterPatient/animations.js'
+import variants from '../Utils/animations.js'
 const [childVariants, containerVariants, buttonVariants] = variants;
 
 const OtpScreen = () => {

@@ -11,7 +11,7 @@ import Step3 from "../../Components/RegisterPatient/Step3.jsx";
 import Step4 from "../../Components/RegisterPatient/Step4.jsx";
 import NavigationButtons from "../../Components/RegisterPatient/NavigationButtons.jsx";
 import RegisterAnimatedObjects from "../../Components/RegisterPatient/registerAnimatedObjects.jsx";
-import variants from "../../Utils/RegisterPatient/animations.js";
+import variants from "../../Utils/animations.js";
 import * as handlers from "../../Utils/RegisterPatient/formHandlers.js"; // Importamos todo como un objeto
 
 const RegisterPatient = () => {
