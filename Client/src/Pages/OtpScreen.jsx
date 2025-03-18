@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom'; // Añadir para navegación
+
 import { motion } from 'framer-motion';
 import Swal from 'sweetalert2';
-import { useLocation, useNavigate } from 'react-router-dom'; // Añadir para navegación
-import Navbar from '../Components/NavBar';
+
+import variants from '../Utils/RegisterPatient/animations.js'
+const [childVariants, containerVariants, buttonVariants] = variants;
 
 const OtpScreen = () => {
     const location = useLocation();
@@ -114,7 +117,7 @@ const OtpScreen = () => {
             }
 
             // Si el OTP es válido, proceder a guardar los datos
-            const saveResponse = await fetch('http://localhost:5000/users/save-patient-after-otp', { // Nota: corregí la ruta a /api/
+            const saveResponse = await fetch('http://localhost:5000/users/save-patient-after-otp', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -206,32 +209,8 @@ const OtpScreen = () => {
         }
     };
 
-    const containerVariants = {
-        hidden: { opacity: 0, y: 50 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: { duration: 1, ease: 'easeOut', staggerChildren: 0.3 },
-        },
-    };
 
-    const childVariants = {
-        hidden: { opacity: 0, x: 50 },
-        visible: {
-            opacity: 1,
-            x: 0,
-            transition: {
-                duration: 0.7,
-                ease: 'easeInOut',
-            },
-        },
-    };
 
-    const buttonVariants = {
-        hover: { scale: 1.1, transition: { duration: 0.3 } },
-        tap: { scale: 0.95 },
-        pulse: { scale: [1, 1.05, 1], transition: { duration: 2, repeat: Infinity } },
-    };
     return (
         <>
 

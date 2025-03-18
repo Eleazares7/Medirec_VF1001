@@ -118,43 +118,4 @@ router.get('/passwordValidation', (req, res) => {
 
 
 
-
-
-// // Validación de la contraseña
-// export const passwordValidation = (req, res, next) => {
-//     const { contrasena } = req.body;
-
-//     if (!contrasena) {
-//         return res.status(400).json({
-//             success: false,
-//             message: 'La contraseña es requerida.'
-//         });
-//     }
-
-//     const SPECIAL_CHARACTERS_REGEX = /[!@#$%^&*(),.?":{}|<>_]/;
-//     const errors = [];
-
-//     if (!/[A-Z]/.test(contrasena)) {
-//         errors.push("una mayúscula");
-//     }
-//     if (!/[a-z]/.test(contrasena)) {
-//         errors.push("una minúscula");
-//     }
-//     if (!/[0-9]/.test(contrasena)) {
-//         errors.push("un número");
-//     }
-//     if (!SPECIAL_CHARACTERS_REGEX.test(contrasena)) {
-//         errors.push("un carácter especial");
-//     }
-
-//     if (errors.length > 0) {
-//         return res.status(400).json({
-//             success: false,
-//             message: `La contraseña debe contener al menos: ${errors.join(', ')}.`
-//         });
-//     }
-
-
-// };
-
 export default router;
