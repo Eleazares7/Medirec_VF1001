@@ -6,8 +6,8 @@ import session from 'express-session';; // Necesitamos node-fetch para hacer sol
 
 import userRoutes from "./Routes/userRoutes.js";
 import apiRoutes from "./Routes/apiRoutes.js"
-import  userValidationRoutes from "./Routes/userValidationRoutes.js"
-
+import userValidationRoutes from "./Routes/userValidationRoutes.js"
+import loginRoutes from "./Routes/loginRoutes.js";
 
 const app = express();
 
@@ -34,11 +34,11 @@ app.use(session({
 // Rutas usuarios
 app.use('/users', userRoutes);
 
-app.use('/validation',userValidationRoutes);
+app.use('/validation', userValidationRoutes);
 
 app.use('/2fa', apiRoutes);
 
-
+app.use('/login', loginRoutes);
 
 
 const PORT = process.env.PORT || 3000;

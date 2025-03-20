@@ -20,6 +20,7 @@ const RegisterPatient = () => {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
         nombre: "",
+        apellido: "",
         telefono: "",
         fechaNacimiento: "",
         calle: "",
@@ -44,7 +45,7 @@ const RegisterPatient = () => {
     const [apiError, setApiError] = useState(null);
     const [colonias, setColonias] = useState([]);
 
-    // Desestructuramos las variantes correctamente
+
     const { childVariants, containerVariants, buttonVariants } = variants;
 
     useEffect(() => {

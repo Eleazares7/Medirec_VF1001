@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import Navbar from '../Components/NavBar'
 
 import { motion } from 'framer-motion';
@@ -9,6 +9,8 @@ import FeatureItem from '../Components/HomeComponents/FeatureItem.jsx';
 import Image1 from '../Images/Persona1.jpg';
 import Image2 from '../Images/Persona2.png';
 import Image3 from '../Images/Persona3.jpg';
+
+import { AuthContext } from "../Context/AuthContext.jsx";
 const [childVariants, containerVariants, buttonVariants] = variants;
 
 const testimonialsData = [
@@ -37,10 +39,15 @@ const featuresData = [
 
 const Home = () => {
   const [isVisible, setIsVisible] = useState(false);
-
+  // const { user, logout } = useContext(AuthContext);  
   useEffect(() => {
     setIsVisible(true);
   }, []);
+
+  // console.log(user)
+
+
+
 
   return (
     <>

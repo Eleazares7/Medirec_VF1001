@@ -25,6 +25,23 @@ const Step1 = ({ formData, handleChange, childVariants }) => {
                     required
                 />
             </motion.div>
+
+            <motion.div variants={childVariants} className="md:col-span-2">
+                <label className="block text-sm font-medium mb-2" htmlFor="apellido">
+                    Apellido
+                </label>
+                <input
+                    type="text"
+                    name="apellido"
+                    id="apellido"
+                    value={formData.apellido}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-teal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    required
+                />
+            </motion.div>
+
+
             <motion.div variants={childVariants}>
                 <label className="block text-sm font-medium mb-2" htmlFor="telefono">
                     Teléfono
