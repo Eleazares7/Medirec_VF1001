@@ -38,6 +38,7 @@ const RegisterPatient = () => {
         contrasena: "",
         confirmarContrasena: "",
         foto: null,
+        nombreFoto: null
     });
     const [previewFoto, setPreviewFoto] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
@@ -56,8 +57,14 @@ const RegisterPatient = () => {
         accept: "image/*",
         onDrop: (acceptedFiles) => {
             const file = acceptedFiles[0];
+
+            console.log(file)
             if (file) {
-                setFormData({ ...formData, foto: file });
+                setFormData((prev) => ({
+                    ...prev,
+                    foto: file,
+                    nombreFoto: file.name, 
+                }));
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     setPreviewFoto(reader.result);

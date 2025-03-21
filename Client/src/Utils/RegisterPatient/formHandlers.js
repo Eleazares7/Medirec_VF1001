@@ -100,6 +100,7 @@ export const handleSubmit = async (e, formData, navigate) => {
         formDataToSend.append(key, formData[key]);
     });
 
+
     // Validar que el email no sea duplicado
     try {
         const response = await fetch(

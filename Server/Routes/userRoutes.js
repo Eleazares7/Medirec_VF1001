@@ -1,12 +1,13 @@
+// routes/userRoutes.js
 import express from "express";
 import db from "../Config/db.js";
 import multer from "multer";
 import path from "path";
 import bcrypt from "bcrypt";
-import { fileURLToPath } from 'url';
-import axios from 'axios';
-import jwt from "jsonwebtoken"
-
+import { fileURLToPath } from "url";
+import axios from "axios";
+import jwt from "jsonwebtoken";
+import fs from "fs/promises"; // Para leer archivos
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "tu_clave_secreta_aqui";
@@ -14,17 +15,21 @@ const JWT_SECRET = process.env.JWT_SECRET || "tu_clave_secreta_aqui";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Configuración de multer para guardar archivos en disco
+const uploadDir = path.join(__dirname, "../uploads");
+fs.mkdir(uploadDir, { recursive: true }); // Crea la carpeta uploads si no existe
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, '../uploads'));
+        cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-        cb(null, Date.now() + '-' + file.originalname);
+        cb(null, file.originalname); // Usa el nombre original del archivo
     },
 });
 const upload = multer({ storage });
 
-
+// Ruta para obtener datos del paciente
 router.get("/patient/:email", async (req, res) => {
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) {
@@ -35,7 +40,6 @@ router.get("/patient/:email", async (req, res) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         const email = req.params.email;
 
-        // Verifica que el token coincida con el email solicitado
         if (decoded.email !== email) {
             return res.status(403).json({ message: "Acceso no autorizado" });
         }
@@ -56,7 +60,26 @@ router.get("/patient/:email", async (req, res) => {
         }
 
         const patient = rows[0];
-        console.log("Datos enviados al frontend:", patient); // Depura qué se envía
+
+        // Leer la imagen desde la carpeta uploads usando pathFoto
+        if (patient.pathFoto) {
+            const filePath = path.join(__dirname, "..", patient.pathFoto); // Ruta absoluta
+            try {
+                const imageBuffer = await fs.readFile(filePath); // Leer el archivo como Buffer
+                patient.fotoData = imageBuffer; // Agregar los datos binarios al objeto
+                patient.fotoMimeType = patient.fotoMimeType || "image/jpeg"; // Asegurar tipo MIME
+            } catch (fileError) {
+                console.error("Error al leer la imagen desde uploads:", fileError);
+                patient.fotoData = null; // Si falla, no incluimos la imagen
+            }
+        } else {
+            patient.fotoData = null;
+        }
+
+        console.log("Datos enviados al frontend:", {
+            ...patient,
+            fotoData: patient.fotoData ? "[Buffer]" : null, // Evitar loguear binarios completos
+        });
         res.status(200).json(patient);
     } catch (error) {
         console.error("Error al obtener datos del paciente:", error);
@@ -64,90 +87,99 @@ router.get("/patient/:email", async (req, res) => {
     }
 });
 
-router.post('/register-patient', upload.single('foto'),
-    async (req, res) => {
-        try {
-            const {
-                nombre,
-                apellido,
-                telefono,
-                fechaNacimiento,
-                calle,
-                numeroExterior,
-                entreCalle1,
-                entreCalle2,
-                codigoPostal,
-                asentamiento,
-                municipio,
-                estado,
-                pais,
-                alergias,
-                antecedentes_medicos,
-                email,
-                contrasena,
-                confirmarContrasena,
-            } = req.body;
+// Ruta para iniciar el registro y enviar OTP
+router.post("/register-patient", upload.single("foto"), async (req, res) => {
+    try {
+        const {
+            nombre,
+            apellido,
+            telefono,
+            fechaNacimiento,
+            calle,
+            numeroExterior,
+            entreCalle1,
+            entreCalle2,
+            codigoPostal,
+            asentamiento,
+            municipio,
+            estado,
+            pais,
+            alergias,
+            antecedentes_medicos,
+            email,
+            contrasena,
+            confirmarContrasena,
+            nombreFoto,
+        } = req.body;
 
-            const foto = req.file ? req.file.filename : null;
-            const fotoMimeType = req.file ? req.file.mimetype : null;
+        const foto = req.file; // Multer guarda la foto en disco
 
-            if (contrasena !== confirmarContrasena) {
-                return res.status(400).json({ message: 'Las contraseñas no coinciden' });
-            }
-
-            // Llamar al endpoint 2fa/send para enviar OTP
-            const otpResponse = await axios.post('http://localhost:5000/2fa/send', { email });
-
-            // Error al mandar el OTP
-            if (!otpResponse.data.success) {
-                return res.status(400).json({ message: otpResponse.data.message || 'Error al enviar el OTP' });
-            }
-
-            // Guardar datos en la sesión solo si el OTP se envía correctamente
-            req.session.tempUserData = {
-                nombre,
-                apellido,
-                telefono,
-                fechaNacimiento,
-                calle,
-                numeroExterior,
-                entreCalle1,
-                entreCalle2,
-                codigoPostal,
-                asentamiento,
-                municipio,
-                estado,
-                pais,
-                alergias,
-                antecedentes_medicos,
-                email,
-                contrasena,
-                foto,
-                fotoMimeType,
-            };
-
-            res.status(200).json({
-                message: 'OTP enviado. Por favor, verifica tu correo.',
-                redirectTo: '/otpScreen'
-            });
-
-        } catch (error) {
-            console.error('Error en /users/register-patient:', error);
-            res.status(500).json({ message: 'Error al procesar la solicitud' });
+        if (!email || !contrasena || !confirmarContrasena) {
+            return res.status(400).json({ message: "Faltan campos requeridos" });
         }
-    });
 
-router.post('/save-patient-after-otp', async (req, res) => {
+        if (contrasena !== confirmarContrasena) {
+            return res.status(400).json({ message: "Las contraseñas no coinciden" });
+        }
+
+        // Verificar si el email ya existe
+        const [existingUser] = await db.query("SELECT * FROM usuarios WHERE email = ?", [email]);
+        if (existingUser.length > 0) {
+            return res.status(400).json({ message: "El email ya está registrado" });
+        }
+
+        // Llamar al endpoint 2fa/send para enviar OTP
+        const otpResponse = await axios.post("http://localhost:5000/2fa/send", { email });
+        if (!otpResponse.data.success) {
+            return res.status(400).json({ message: otpResponse.data.message || "Error al enviar el OTP" });
+        }
+
+        // Guardar datos en la sesión
+        req.session.tempUserData = {
+            nombre,
+            apellido,
+            telefono,
+            fechaNacimiento,
+            calle,
+            numeroExterior,
+            entreCalle1,
+            entreCalle2,
+            codigoPostal,
+            asentamiento,
+            municipio,
+            estado,
+            pais,
+            alergias,
+            antecedentes_medicos,
+            email,
+            contrasena,
+            foto: foto ? foto.filename : null,
+            fotoMimeType: foto ? foto.mimetype : null,
+            nombreFoto: nombreFoto || (foto ? foto.originalname : null),
+        };
+
+        console.log("Datos guardados en sesión:", req.session.tempUserData);
+
+        res.status(200).json({
+            message: "OTP enviado. Por favor, verifica tu correo.",
+            redirectTo: "/otpScreen",
+        });
+    } catch (error) {
+        console.error("Error en /users/register-patient:", error);
+        res.status(500).json({ message: "Error al procesar la solicitud" });
+    }
+});
+
+// Ruta para guardar los datos después de verificar el OTP
+router.post("/save-patient-after-otp", async (req, res) => {
     try {
         const { email } = req.body;
 
-
-
-        console.log('ID de sesión en /save-patient-after-otp:', req.sessionID);
-        console.log('Datos en sesión:', req.session.tempUserData);
+        console.log("ID de sesión en /save-patient-after-otp:", req.sessionID);
+        console.log("Datos en sesión:", req.session.tempUserData);
 
         if (!req.session.tempUserData || req.session.tempUserData.email !== email) {
-            return res.status(400).json({ error: 'Datos temporales no encontrados o inválidos' });
+            return res.status(400).json({ message: "Datos temporales no encontrados o inválidos" });
         }
 
         const {
@@ -170,33 +202,35 @@ router.post('/save-patient-after-otp', async (req, res) => {
             contrasena,
             foto,
             fotoMimeType,
+            nombreFoto,
         } = req.session.tempUserData;
 
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(contrasena, saltRounds);
+        const hashedPassword = await bcrypt.hash(contrasena, 10);
 
-        const usuarioQuery = `
-            INSERT INTO usuarios (email, contrasena, id_rol)
-            VALUES (?, ?, '1')
-        `;
-        const [usuarioResult] = await db.query(usuarioQuery, [
-            storedEmail,
-            hashedPassword,
-        ]);
-
+        // Insertar en la tabla usuarios
+        const [usuarioResult] = await db.query(
+            "INSERT INTO usuarios (email, contrasena, id_rol) VALUES (?, ?, 1)",
+            [storedEmail, hashedPassword]
+        );
         const usuarioId = usuarioResult.insertId;
 
+        // Construir la ruta de la foto
+        const fotoPath = foto ? path.join("uploads", foto) : null;
+
+        // Insertar en la tabla pacientes
         const pacienteQuery = `
-            INSERT INTO pacientes (id_paciente, id_usuario,nombre,apellido, telefono,fechaNacimiento,calle,numeroExterior,entreCalle1,entreCalle2,codigoPostal,asentamiento,municipio,estado,pais,alergias,antecedentes_medicos, foto, fotoMimeType)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+      INSERT INTO pacientes (
+        id_usuario, nombre, apellido, telefono, fechaNacimiento, calle, numeroExterior, 
+        entreCalle1, entreCalle2, codigoPostal, asentamiento, municipio, estado, pais, 
+        alergias, antecedentes_medicos, foto, fotoMimeType, nombreFoto, pathFoto
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
         await db.query(pacienteQuery, [
-            usuarioId,
             usuarioId,
             nombre,
             apellido,
             telefono,
-            fechaNacimiento,
+            fechaNacimiento || null,
             calle,
             numeroExterior,
             entreCalle1,
@@ -209,28 +243,32 @@ router.post('/save-patient-after-otp', async (req, res) => {
             alergias,
             antecedentes_medicos,
             foto,
-            fotoMimeType
+            fotoMimeType,
+            nombreFoto,
+            fotoPath,
         ]);
 
+        // Limpiar la sesión
         delete req.session.tempUserData;
-        res.status(201).json({ message: 'Paciente registrado exitosamente' });
+
+        res.status(201).json({ message: "Paciente registrado exitosamente" });
     } catch (error) {
-        console.error('Error en /save-patient-after-otp:', error);
-        res.status(500).json({ error: 'Error al guardar los datos del paciente' });
+        console.error("Error en /save-patient-after-otp:", error);
+        res.status(500).json({ message: "Error al guardar los datos del paciente" });
     }
 });
 
-//Ruta para obtener dirección a traves de código postal
-router.get('/codigo-postal/:cp', async (req, res) => {
+// Ruta para obtener dirección por código postal
+router.get("/codigo-postal/:cp", async (req, res) => {
     const { cp } = req.params;
     const apiKey = process.env.TAU_API_KEY;
 
     try {
         const response = await fetch(`https://api.tau.com.mx/dipomex/v1/codigo_postal?cp=${cp}`, {
-            method: 'GET',
+            method: "GET",
             headers: {
-                'APIKEY': apiKey,
-                'Accept': 'application/json',
+                "APIKEY": apiKey,
+                "Accept": "application/json",
             },
         });
 
@@ -241,25 +279,24 @@ router.get('/codigo-postal/:cp', async (req, res) => {
 
         const data = await response.json();
 
-        // Formatear la respuesta para que sea consistente con lo que esperamos
         const formattedData = {
             error: data.error || false,
-            message: data.message || 'Procesamiento correcto',
+            message: data.message || "Procesamiento correcto",
             codigo_postal: {
-                estado: data.codigo_postal?.estado || '',
-                estado_abreviatura: data.codigo_postal?.estado_abreviatura || '',
-                municipio: data.codigo_postal?.municipio || '',
+                estado: data.codigo_postal?.estado || "",
+                estado_abreviatura: data.codigo_postal?.estado_abreviatura || "",
+                municipio: data.codigo_postal?.municipio || "",
                 codigo_postal: data.codigo_postal?.codigo_postal || cp,
-                colonias: data.codigo_postal?.colonias || []  // Array de colonias, vacío si no hay
-            }
+                colonias: data.codigo_postal?.colonias || [],
+            },
         };
         res.status(200).json(formattedData);
     } catch (error) {
-        console.error('Error detallado en /api/codigo-postal:', error.message);
+        console.error("Error detallado en /api/codigo-postal:", error.message);
         res.status(500).json({
             error: true,
-            message: 'Error al consultar la API de código postal: ' + error.message,
-            codigo_postal: {}
+            message: "Error al consultar la API de código postal: " + error.message,
+            codigo_postal: {},
         });
     }
 });
