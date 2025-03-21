@@ -10,6 +10,7 @@ const JWT_SECRET = "tu_clave_secreta_aqui"; // Usa .env en producción
 router.post("/loginValidation", async (req, res) => {
     const { contrasena, email } = req.body;
 
+
     try {
         const [usuario] = await db.query(`SELECT * FROM usuarios WHERE email = ?`, [email]);
         if (usuario.length === 0) {
@@ -61,7 +62,7 @@ router.get("/verify", async (req, res) => {
         res.status(200).json({
             id: user.id_usuario,
             email: user.email,
-            role: user.id_rol, // Número, no string
+            role: user.id_rol,
         });
     } catch (error) {
         if (error.name === "TokenExpiredError") {

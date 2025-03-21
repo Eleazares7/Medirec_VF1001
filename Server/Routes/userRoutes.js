@@ -32,6 +32,7 @@ const upload = multer({ storage });
 // Ruta para obtener datos del paciente
 router.get("/patient/:email", async (req, res) => {
     const token = req.headers.authorization?.split(" ")[1];
+    
     if (!token) {
         return res.status(401).json({ message: "No se proporcionó token" });
     }

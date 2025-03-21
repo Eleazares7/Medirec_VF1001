@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../Context/AuthContext.jsx";
-import Navbar from "../../Components/HomeComponents/NavBar.jsx"; // Asegúrate de que la ruta sea correcta
+import Navbar from "../../Components/HomeComponents/NavBar.jsx";
+import Footer from "../../Components/HomeComponents/Footer.jsx";
 
 const HomePatient = () => {
   const { user } = useContext(AuthContext);
@@ -88,9 +89,8 @@ const HomePatient = () => {
       <div className="min-h-screen bg-teal-50 px-6 py-12">
         {/* Hero Section */}
         <section
-          className={`max-w-6xl mx-auto bg-white rounded-xl shadow-xl p-10 mb-10 transition-all duration-1000 ease-in-out transform ${
-            isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-10 scale-95"
-          }`}
+          className={`max-w-6xl mx-auto bg-white rounded-xl shadow-xl p-10 mb-10 transition-all duration-1000 ease-in-out transform ${isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-10 scale-95"
+            }`}
         >
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="text-center md:text-left">
@@ -181,15 +181,8 @@ const HomePatient = () => {
           </button>
         </section>
 
-        {/* Footer Note */}
-        <footer className="max-w-6xl mx-auto text-center mt-10">
-          <p
-            className="text-teal-700 animate-fade-in-up"
-            style={{ animationDelay: "1.6s" }}
-          >
-            © 2025 MediRec - Cuidarte es nuestro compromiso.
-          </p>
-        </footer>
+        <Footer />
+
       </div>
     </>
   );
