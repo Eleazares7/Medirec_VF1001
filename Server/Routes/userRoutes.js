@@ -1,6 +1,6 @@
 // routes/userRoutes.js
 import express from "express";
-import db from "../Config/db.js";
+import db from "../config/db.js"
 import multer from "multer";
 import path from "path";
 import bcrypt from "bcrypt";

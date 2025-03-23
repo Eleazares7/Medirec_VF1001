@@ -10,7 +10,6 @@ import userValidationRoutes from "./Routes/userValidationRoutes.js"
 import loginRoutes from "./Routes/loginRoutes.js";
 import adminRoutes from "./Routes/adminRoutes.js"
 
-
 const app = express();
 
 // Configurar middleware

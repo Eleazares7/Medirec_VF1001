@@ -9,6 +9,9 @@ import HomePatient from "../Pages/Patients/HomePatient";
 import ProtectedRoute from "../Routes/ProtectedRoute.jsx";
 import Profile from "../Pages/Patients/Profile.jsx";
 import HomeAdmin from "../Pages/Admin/HomeAdmin.jsx";
+import ManageUsers from "../Pages/Admin/ManageUsers.jsx";
+import ManageDoctors from "../Pages/Admin/ManageDoctors.jsx";
+import AddDoctor from "../Pages/Admin/AddDoctor.jsx";
 
 export const routes = [
     { path: "/", element: <Home />, index: true },
@@ -32,6 +35,18 @@ export const routes = [
     {
         path: "/admin/home",
         element: <ProtectedRoute element={<HomeAdmin />} allowedRole={3} />
+    },
+    {
+        path: "/admin/manageUsers",
+        element: <ProtectedRoute element={<ManageUsers />} allowedRole={3} />
+    },
+    {
+        path: "/admin/users/manageDoctors",
+        element: <ProtectedRoute element={<ManageDoctors />} allowedRole={3} />
+    },
+    {
+        path: "/admin/users/addDoctor",
+        element: <ProtectedRoute element={<AddDoctor />} allowedRole={3} />
     }
 
     // Rutas del doctor (puedes protegerlas más adelante si es necesario)
