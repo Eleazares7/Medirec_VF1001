@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import NavbarAdmin from '../../Components/AdminComponents/HomeAdmin/NavBarAdmin';
 import { AuthContext } from '../../Context/AuthContext';
 import { useDropzone } from 'react-dropzone';
+import { FaEye, FaEyeSlash } from 'react-icons/fa'; // Importamos los íconos de ojo
+import Swal from 'sweetalert2'; // Importamos SweetAlert2
 
 const AddDoctor = () => {
     const { user } = useContext(AuthContext);
@@ -11,6 +13,7 @@ const AddDoctor = () => {
     const [formData, setFormData] = useState({
         email: '',
         contrasena: '',
+        confirmarContrasena: '', // Nuevo campo para confirmar contraseña
         nombre: '',
         apellido: '',
         especialidad: '',
@@ -18,9 +21,9 @@ const AddDoctor = () => {
         foto: null,
     });
     const [previewFoto, setPreviewFoto] = useState(null); // Estado para la vista previa de la foto
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false); // Estado para mostrar/ocultar contraseña
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Estado para mostrar/ocultar confirmar contraseña
 
     // Configuración de react-dropzone
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -32,24 +35,31 @@ const AddDoctor = () => {
         onDrop: (acceptedFiles, fileRejections) => {
             if (fileRejections.length > 0) {
                 if (fileRejections[0].errors[0].code === 'file-too-large') {
-                    setError('La imagen no debe exceder los 5MB.');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'La imagen no debe exceder los 5MB.',
+                        confirmButtonColor: '#0d9488',
+                    });
                 } else if (fileRejections[0].errors[0].code === 'file-invalid-type') {
-                    setError('Por favor, selecciona un archivo de imagen válido (JPEG, PNG, GIF).');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Por favor, selecciona un archivo de imagen válido (JPEG, PNG, GIF).',
+                        confirmButtonColor: '#0d9488',
+                    });
                 }
                 return;
             }
 
             if (acceptedFiles.length > 0) {
                 const file = acceptedFiles[0];
-                // Limpiar la URL anterior si existe
                 if (previewFoto) {
                     URL.revokeObjectURL(previewFoto);
                 }
-                // Generar una nueva URL para la vista previa
                 const previewUrl = URL.createObjectURL(file);
                 setPreviewFoto(previewUrl);
                 setFormData((prev) => ({ ...prev, foto: file }));
-                setError('');
             }
         },
     });
@@ -79,13 +89,28 @@ const AddDoctor = () => {
     // Manejar el envío del formulario
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
-        setSuccess('');
         setLoading(true);
 
-        // Validaciones
-        if (!formData.email || !formData.contrasena || !formData.nombre || !formData.apellido || !formData.especialidad || !formData.numero_licencia) {
-            setError('Por favor, completa todos los campos obligatorios.');
+        // Validaciones en el frontend
+        if (!formData.email || !formData.contrasena || !formData.confirmarContrasena || !formData.nombre || !formData.apellido || !formData.especialidad || !formData.numero_licencia) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Por favor, completa todos los campos obligatorios.',
+                confirmButtonColor: '#0d9488',
+            });
+            setLoading(false);
+            return;
+        }
+
+        // Validar que las contraseñas coincidan
+        if (formData.contrasena !== formData.confirmarContrasena) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Las contraseñas no coinciden.',
+                confirmButtonColor: '#0d9488',
+            });
             setLoading(false);
             return;
         }
@@ -93,40 +118,22 @@ const AddDoctor = () => {
         try {
             const token = localStorage.getItem("token");
 
-            // 1. Crear el usuario en la tabla `usuarios`
-            const userFormData = new FormData();
-            userFormData.append('email', formData.email);
-            userFormData.append('contrasena', formData.contrasena);
-            userFormData.append('rol', 'medico');
-
-            const userResponse = await fetch('http://localhost:5000/register', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                body: userFormData,
-            });
-
-            if (!userResponse.ok) {
-                const errorData = await userResponse.json();
-                throw new Error(errorData.message || 'Error al crear el usuario.');
-            }
-
-            const userData = await userResponse.json();
-            const id_usuario = userData.id_usuario; // Obtenemos el ID del usuario creado
-
-            // 2. Crear el doctor en la tabla `medicos`
+            // Crear un FormData con todos los datos
             const doctorFormData = new FormData();
-            doctorFormData.append('id_usuario', id_usuario);
+            doctorFormData.append('email', formData.email);
+            doctorFormData.append('contrasena', formData.contrasena);
+            doctorFormData.append('confirmarContrasena', formData.confirmarContrasena); // Agregar confirmarContrasena
             doctorFormData.append('nombre', formData.nombre);
             doctorFormData.append('apellido', formData.apellido);
             doctorFormData.append('especialidad', formData.especialidad);
             doctorFormData.append('numero_licencia', formData.numero_licencia);
+            doctorFormData.append('adminEmail', user.email); // Enviar el correo del administrador autenticado
             if (formData.foto) {
                 doctorFormData.append('foto', formData.foto);
             }
 
-            const doctorResponse = await fetch('http://localhost:5000/admin/doctors', {
+            // Enviar todos los datos al endpoint /admin/registerDoctor
+            const response = await fetch('http://localhost:5000/admin/registerDoctor', { // Ajustar el puerto a 3000
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -134,29 +141,45 @@ const AddDoctor = () => {
                 body: doctorFormData,
             });
 
-            if (!doctorResponse.ok) {
-                const errorData = await doctorResponse.json();
+            if (!response.ok) {
+                const errorData = await response.json();
                 throw new Error(errorData.message || 'Error al registrar el doctor.');
             }
 
-            setSuccess('Doctor registrado exitosamente.');
+            // Mostrar mensaje de éxito con SweetAlert2
+            await Swal.fire({
+                icon: 'success',
+                title: 'Éxito',
+                text: 'Doctor registrado exitosamente.',
+                confirmButtonColor: '#0d9488',
+            });
+
+            // Limpiar el formulario
             setFormData({
                 email: '',
                 contrasena: '',
+                confirmarContrasena: '',
                 nombre: '',
                 apellido: '',
                 especialidad: '',
                 numero_licencia: '',
                 foto: null,
             });
-            // Limpiar la vista previa
+            setShowPassword(false);
+            setShowConfirmPassword(false);
             if (previewFoto) {
                 URL.revokeObjectURL(previewFoto);
                 setPreviewFoto(null);
             }
-            setTimeout(() => navigate('/admin/users/doctors'), 2000); // Redirigir después de 2 segundos
+            setTimeout(() => navigate('/admin/home'), 500); // Redirigir después de 0.5 segundos
         } catch (error) {
-            setError(error.message);
+            // Mostrar error con SweetAlert2
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message,
+                confirmButtonColor: '#0d9488',
+            });
         } finally {
             setLoading(false);
         }
@@ -165,19 +188,19 @@ const AddDoctor = () => {
     return (
         <>
             <NavbarAdmin />
-            <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-8">
+            <div className="min-h-screen bg-gradient-to-br from-teal-50 to-gray-100 flex items-center justify-center px-4 py-12">
                 <motion.div
                     initial={{ opacity: 0, y: -50 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7, ease: 'easeInOut' }}
-                    className="max-w-lg w-full bg-white rounded-lg shadow-lg p-8"
+                    className="max-w-xl w-full bg-white rounded-2xl shadow-xl p-8 transform transition-all duration-300 hover:shadow-2xl"
                 >
                     {/* Header */}
-                    <div className="text-center mb-8">
+                    <div className="text-center mb-10">
                         <motion.h1
                             whileHover={{ scale: 1.05 }}
                             transition={{ duration: 0.5 }}
-                            className="text-3xl font-bold text-teal-800 mb-4"
+                            className="text-4xl font-extrabold text-teal-900 mb-3"
                         >
                             Registrar un Doctor
                         </motion.h1>
@@ -187,35 +210,15 @@ const AddDoctor = () => {
                             transition={{ duration: 0.5, delay: 0.2, ease: 'easeInOut' }}
                             className="text-gray-600 text-lg"
                         >
-                            Completa los datos para registrar un nuevo doctor
+                            Ingresa los datos para registrar un nuevo doctor
                         </motion.p>
                     </div>
-
-                    {/* Mensajes de error o éxito */}
-                    {error && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="mb-4 p-3 bg-red-100 text-red-800 rounded-md"
-                        >
-                            {error}
-                        </motion.div>
-                    )}
-                    {success && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="mb-4 p-3 bg-green-100 text-green-800 rounded-md"
-                        >
-                            {success}
-                        </motion.div>
-                    )}
 
                     {/* Formulario */}
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Email */}
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-teal-800">
+                            <label htmlFor="email" className="block text-sm font-medium text-teal-900 mb-1">
                                 Correo Electrónico *
                             </label>
                             <input
@@ -224,7 +227,7 @@ const AddDoctor = () => {
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
-                                className="mt-1 block w-full px-3 py-2 border border-teal-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                                className="block w-full px-4 py-3 border border-teal-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 bg-teal-50/50 text-gray-800 placeholder-gray-400"
                                 placeholder="ejemplo@hospital.com"
                                 required
                             />
@@ -232,24 +235,59 @@ const AddDoctor = () => {
 
                         {/* Contraseña */}
                         <div>
-                            <label htmlFor="contrasena" className="block text-sm font-medium text-teal-800">
+                            <label htmlFor="contrasena" className="block text-sm font-medium text-teal-900 mb-1">
                                 Contraseña *
                             </label>
-                            <input
-                                type="password"
-                                id="contrasena"
-                                name="contrasena"
-                                value={formData.contrasena}
-                                onChange={handleChange}
-                                className="mt-1 block w-full px-3 py-2 border border-teal-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
-                                placeholder="Ingresa una contraseña"
-                                required
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    id="contrasena"
+                                    name="contrasena"
+                                    value={formData.contrasena}
+                                    onChange={handleChange}
+                                    className="block w-full px-4 py-3 border border-teal-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 bg-teal-50/50 text-gray-800 placeholder-gray-400"
+                                    placeholder="Ingresa una contraseña"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-teal-600 transition-colors duration-200"
+                                >
+                                    {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Confirmar Contraseña */}
+                        <div>
+                            <label htmlFor="confirmarContrasena" className="block text-sm font-medium text-teal-900 mb-1">
+                                Confirmar Contraseña *
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type={showConfirmPassword ? 'text' : 'password'}
+                                    id="confirmarContrasena"
+                                    name="confirmarContrasena"
+                                    value={formData.confirmarContrasena}
+                                    onChange={handleChange}
+                                    className="block w-full px-4 py-3 border border-teal-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 bg-teal-50/50 text-gray-800 placeholder-gray-400"
+                                    placeholder="Confirma tu contraseña"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-teal-600 transition-colors duration-200"
+                                >
+                                    {showConfirmPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                                </button>
+                            </div>
                         </div>
 
                         {/* Nombre */}
                         <div>
-                            <label htmlFor="nombre" className="block text-sm font-medium text-teal-800">
+                            <label htmlFor="nombre" className="block text-sm font-medium text-teal-900 mb-1">
                                 Nombre *
                             </label>
                             <input
@@ -258,7 +296,7 @@ const AddDoctor = () => {
                                 name="nombre"
                                 value={formData.nombre}
                                 onChange={handleChange}
-                                className="mt-1 block w-full px-3 py-2 border border-teal-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                                className="block w-full px-4 py-3 border border-teal-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 bg-teal-50/50 text-gray-800 placeholder-gray-400"
                                 placeholder="Nombre del doctor"
                                 required
                             />
@@ -266,7 +304,7 @@ const AddDoctor = () => {
 
                         {/* Apellido */}
                         <div>
-                            <label htmlFor="apellido" className="block text-sm font-medium text-teal-800">
+                            <label htmlFor="apellido" className="block text-sm font-medium text-teal-900 mb-1">
                                 Apellido *
                             </label>
                             <input
@@ -275,7 +313,7 @@ const AddDoctor = () => {
                                 name="apellido"
                                 value={formData.apellido}
                                 onChange={handleChange}
-                                className="mt-1 block w-full px-3 py-2 border border-teal-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                                className="block w-full px-4 py-3 border border-teal-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 bg-teal-50/50 text-gray-800 placeholder-gray-400"
                                 placeholder="Apellido del doctor"
                                 required
                             />
@@ -283,7 +321,7 @@ const AddDoctor = () => {
 
                         {/* Especialidad */}
                         <div>
-                            <label htmlFor="especialidad" className="block text-sm font-medium text-teal-800">
+                            <label htmlFor="especialidad" className="block text-sm font-medium text-teal-900 mb-1">
                                 Especialidad *
                             </label>
                             <input
@@ -292,7 +330,7 @@ const AddDoctor = () => {
                                 name="especialidad"
                                 value={formData.especialidad}
                                 onChange={handleChange}
-                                className="mt-1 block w-full px-3 py-2 border border-teal-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                                className="block w-full px-4 py-3 border border-teal-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 bg-teal-50/50 text-gray-800 placeholder-gray-400"
                                 placeholder="Ej. Cardiología"
                                 required
                             />
@@ -300,7 +338,7 @@ const AddDoctor = () => {
 
                         {/* Número de Licencia */}
                         <div>
-                            <label htmlFor="numero_licencia" className="block text-sm font-medium text-teal-800">
+                            <label htmlFor="numero_licencia" className="block text-sm font-medium text-teal-900 mb-1">
                                 Número de Licencia *
                             </label>
                             <input
@@ -309,7 +347,7 @@ const AddDoctor = () => {
                                 name="numero_licencia"
                                 value={formData.numero_licencia}
                                 onChange={handleChange}
-                                className="mt-1 block w-full px-3 py-2 border border-teal-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                                className="block w-full px-4 py-3 border border-teal-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 bg-teal-50/50 text-gray-800 placeholder-gray-400"
                                 placeholder="Número de licencia médica"
                                 required
                             />
@@ -317,47 +355,50 @@ const AddDoctor = () => {
 
                         {/* Foto con react-dropzone */}
                         <div>
-                            <label className="block text-sm font-medium text-teal-800 mb-1">
-                                Foto (Opcional)
+                            <label className="block text-sm font-medium text-teal-900 mb-2">
+                                Foto *
                             </label>
                             <div
                                 {...getRootProps()}
-                                className={`border-2 border-dashed rounded-md p-6 text-center transition-colors duration-300 ${
-                                    isDragActive ? 'border-teal-500 bg-teal-50' : 'border-teal-300 bg-teal-50 hover:bg-teal-100'
-                                }`}
+                                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 cursor-pointer ${isDragActive ? 'border-teal-500 bg-teal-50' : 'border-teal-300 bg-teal-50 hover:bg-teal-100 hover:border-teal-400'
+                                    }`}
                             >
                                 <input {...getInputProps()} />
                                 {formData.foto ? (
-                                    <p className="text-teal-800">Archivo seleccionado: {formData.foto.name}</p>
+                                    <p className="text-teal-900 font-medium">Archivo seleccionado: <span className="text-gray-600">{formData.foto.name}</span></p>
                                 ) : isDragActive ? (
-                                    <p className="text-teal-800">Suelta la imagen aquí...</p>
+                                    <p className="text-teal-900 font-medium">Suelta la imagen aquí...</p>
                                 ) : (
-                                    <p className="text-teal-800">
-                                        Arrastra y suelta una imagen aquí, o haz clic para seleccionarla
+                                    <p className="text-teal-900 font-medium">
+                                        Arrastra y suelta una imagen aquí, o <span className="text-teal-600 underline">haz clic para seleccionarla</span>
                                     </p>
                                 )}
                             </div>
                             {/* Vista previa de la foto */}
                             {previewFoto && (
-                                <motion.img
-                                    src={previewFoto}
-                                    alt="Vista previa de la foto"
-                                    className="w-32 h-32 rounded-full mx-auto mt-4 object-cover border-2 border-teal-600"
+                                <motion.div
+                                    className="flex justify-center mt-4"
                                     initial={{ scale: 0 }}
                                     animate={{ scale: 1 }}
                                     transition={{ duration: 0.5 }}
-                                />
+                                >
+                                    <img
+                                        src={previewFoto}
+                                        alt="Vista previa de la foto"
+                                        className="w-40 h-40 rounded-full object-cover border-4 border-teal-500 shadow-md"
+                                    />
+                                </motion.div>
                             )}
                         </div>
 
                         {/* Botones */}
-                        <div className="flex justify-between">
+                        <div className="flex justify-between gap-4 mt-8">
                             <motion.button
                                 type="button"
-                                onClick={() => navigate('/admin/users/doctors')}
+                                onClick={() => navigate('/admin/users/manageDoctors')}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                className="px-6 py-2 bg-gray-500 text-white rounded-full font-medium shadow-md transition-colors duration-300 hover:bg-gray-600"
+                                className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-full font-semibold shadow-lg transition-all duration-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                             >
                                 Cancelar
                             </motion.button>
@@ -366,9 +407,8 @@ const AddDoctor = () => {
                                 disabled={loading}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                className={`px-6 py-2 bg-teal-600 text-white rounded-full font-medium shadow-md transition-colors duration-300 ${
-                                    loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-teal-500'
-                                }`}
+                                className={`flex-1 px-6 py-3 bg-teal-600 text-white rounded-full font-semibold shadow-lg transition-all duration-300 ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2'
+                                    }`}
                             >
                                 {loading ? 'Registrando...' : 'Registrar Doctor'}
                             </motion.button>
