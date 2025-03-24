@@ -1,5 +1,5 @@
 // routes/auth.js
-import db from "../Config/db.js";
+import db from "../config/db.js";
 import express from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";

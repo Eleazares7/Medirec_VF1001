@@ -32,7 +32,7 @@ const upload = multer({ storage });
 // Ruta para obtener datos del paciente
 router.get("/patient/:email", async (req, res) => {
     const token = req.headers.authorization?.split(" ")[1];
-    
+
     if (!token) {
         return res.status(401).json({ message: "No se proporcionó token" });
     }
@@ -261,6 +261,7 @@ router.post("/save-patient-after-otp", async (req, res) => {
 
 // Ruta para obtener dirección por código postal
 router.get("/codigo-postal/:cp", async (req, res) => {
+
     const { cp } = req.params;
     const apiKey = process.env.TAU_API_KEY;
 
@@ -302,4 +303,74 @@ router.get("/codigo-postal/:cp", async (req, res) => {
     }
 });
 
+
+router.get('/getAllDoctors', async (req, res) => {
+
+    const token = req.headers.authorization?.split(" ")[1];
+
+    if (!token) {
+        return res.status(401).json({ message: "No se proporcionó token" });
+    }
+
+    try {
+        const [doctors] = await db.query(
+            `SELECT * from medicos`
+        );
+
+        res.status(200).json(doctors);
+    } catch (error) {
+        console.error('Error al obtener los médicos:', error);
+        res.status(500).json({ message: 'Error interno del servidor al obtener los médicos.' });
+    }
+});
+
+router.post('/createAppointment', async (req, res) => {
+    const token = req.headers.authorization?.split(" ")[1];
+
+    if (!token) {
+        return res.status(401).json({ message: "No se proporcionó token" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+
+
+    const { id_paciente, id_medico, fecha_consulta, hora_consulta, motivo, estado } = req.body;
+
+
+
+    // Validar que todos los campos necesarios estén presentes
+    if (!id_paciente || !id_medico || !fecha_consulta || !hora_consulta || !motivo || !estado) {
+        return res.status(400).json({ message: 'Todos los campos son obligatorios' });
+    }
+
+
+    // Verificar que el id_paciente coincida con el usuario autenticado
+    if (id_paciente !== decoded.id) {
+        return res.status(403).json({ message: 'No puedes crear citas para otro usuario' });
+    }
+
+    const [searchIdPaciente] = await db.query("SELECT id_paciente FROM pacientes where id_usuario = ?", decoded.id);
+
+    if (searchIdPaciente === 0) {
+        return res.status(404).json({ message: "Paciente no encontrado" });
+    }
+
+
+
+
+    try {
+
+        const [result] = await db.query(
+            'INSERT INTO consultas (id_paciente, id_medico, fecha_consulta, hora_consulta, motivo, estado) VALUES (?, ?, ?, ?, ?, ?)',
+            [searchIdPaciente[0].id_paciente, id_medico, fecha_consulta, hora_consulta, motivo, estado]
+        );
+
+
+        res.status(201).json({ message: 'Cita creada exitosamente', appointmentId: result.insertId });
+    } catch (error) {
+        console.error('Error al crear la cita:', error);
+        res.status(500).json({ message: 'Error interno del servidor' });
+    }
+});
 export default router;

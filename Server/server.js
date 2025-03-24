@@ -9,6 +9,7 @@ import apiRoutes from "./Routes/apiRoutes.js"
 import userValidationRoutes from "./Routes/userValidationRoutes.js"
 import loginRoutes from "./Routes/loginRoutes.js";
 import adminRoutes from "./Routes/adminRoutes.js"
+import doctorRoutes from "./Routes/doctorRoutes.js"
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use('/login', loginRoutes);
 
 app.use('/admin', adminRoutes)
 
+app.use('/doctor', doctorRoutes)
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -7,7 +7,7 @@ const NavbarAdmin = () => {
     const [isVisible, setIsVisible] = useState(false);
     const [adminData, setAdminData] = useState(null); // Estado para los datos del administrador
     const [loading, setLoading] = useState(true); // Estado para manejar la carga
-    const { user } = useContext(AuthContext); // Obtenemos el usuario del contexto
+    const { user, logout } = useContext(AuthContext); // Obtenemos el usuario del contexto
     const navigate = useNavigate();
 
     // Animación de entrada al montar el componente
@@ -114,6 +114,7 @@ const NavbarAdmin = () => {
                             className="px-4 py-2 bg-teal-600 text-white rounded-full font-medium
                             hover:bg-teal-500 transform hover:scale-105 transition-all duration-300
                             shadow-md hover:shadow-lg"
+                            onClick={logout}
                         >
                             <span className="flex items-center">
                                 Cerrar Sesión

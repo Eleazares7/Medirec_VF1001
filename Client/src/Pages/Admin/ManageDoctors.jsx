@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import NavbarAdmin from "../../Components/AdminComponents/HomeAdmin/NavBarAdmin.jsx";
+import NavbarAdmin from '../../Components/AdminComponents/HomeAdmin/NavBarAdmin.jsx';
 import DoctorOptions from '../../Components/AdminComponents/ManageDoctors/DoctorOptions.jsx';
 import DoctorList from '../../Components/AdminComponents/ManageDoctors/DoctorList.jsx';
 import LoadingSpinner from '../../Components/AdminComponents/ManageDoctors/LoadingSpinner.jsx';
@@ -24,7 +24,9 @@ const ManageDoctors = () => {
 
       const response = await fetch('http://localhost:5000/admin/users/getDoctors', {
         method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {
@@ -53,7 +55,11 @@ const ManageDoctors = () => {
       <NavbarAdmin />
       <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-8">
         {showList ? (
-          <DoctorList doctors={doctors} onBack={() => setShowList(false)} />
+          <DoctorList 
+            doctors={doctors} 
+            onBack={() => setShowList(false)} 
+            fetchDoctors={fetchDoctors} // Pasar fetchDoctors como prop
+          />
         ) : (
           <DoctorOptions onShowList={() => setShowList(true)} />
         )}

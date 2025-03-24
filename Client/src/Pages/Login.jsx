@@ -58,9 +58,11 @@ const Login = () => {
                 }).then(() => {
                     if (data.role === 1) {
                         navigate("/patient/home");
-                    } else if(data.role === 3){
+                    } else if (data.role === 2) {
+                        navigate("/doctor/home")
+                    } else if (data.role === 3) {
                         navigate("/admin/home")
-                    }else {
+                    } else {
                         navigate("/");
                     }
                     setFormData({ email: "", contrasena: "" });

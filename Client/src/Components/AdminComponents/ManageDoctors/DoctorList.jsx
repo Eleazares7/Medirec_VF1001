@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import Swal from 'sweetalert2';
 
-const DoctorList = ({ doctors, onBack }) => {
+const DoctorList = ({ doctors, onBack, fetchDoctors }) => {
   const [selectedDoctor, setSelectedDoctor] = useState(null); // Doctor seleccionado para editar
   const [isModalOpen, setIsModalOpen] = useState(false); // Estado del modal
 
@@ -11,28 +11,63 @@ const DoctorList = ({ doctors, onBack }) => {
     setSelectedDoctor(doctor);
     setIsModalOpen(true);
   };
-console.log(doctors)
+
   // Función para cerrar el modal
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedDoctor(null);
   };
 
-  // Función para manejar el envío del formulario (actualización)
-  const handleUpdateDoctor = (e) => {
+  // Función para actualizar un doctor
+  const handleUpdateDoctor = async (e) => {
     e.preventDefault();
-    // Aquí iría la lógica para actualizar el doctor en el backend
-    console.log('Doctor actualizado:', selectedDoctor);
-    handleCloseModal();
-    Swal.fire({
-      icon: 'success',
-      title: 'Éxito',
-      text: 'Doctor actualizado correctamente',
-      confirmButtonColor: '#0d9488',
-    });
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No se encontró el token de autenticación.");
+
+      const response = await fetch('http://localhost:5000/admin/users/updateDoctor', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: selectedDoctor.id,
+          nombre: selectedDoctor.nombre,
+          apellido: selectedDoctor.apellido,
+          especialidad: selectedDoctor.especialidad,
+          email: selectedDoctor.email,
+          numero_licencia: selectedDoctor.numero_licencia,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al actualizar el doctor');
+      }
+
+      const data = await response.json();
+      console.log('Doctor actualizado:', data);
+      handleCloseModal();
+      Swal.fire({
+        icon: 'success',
+        title: 'Éxito',
+        text: 'Doctor actualizado correctamente',
+        confirmButtonColor: '#0d9488',
+      });
+      // Refrescar la lista de doctores
+      fetchDoctors();
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.message,
+        confirmButtonColor: '#0d9488',
+      });
+    }
   };
 
-  // Función para confirmar y eliminar un doctor
+  // Función para eliminar un doctor
   const handleDelete = (doctor) => {
     Swal.fire({
       title: '¿Estás seguro?',
@@ -46,16 +81,42 @@ console.log(doctors)
       cancelButtonColor: '#0d9488',
       confirmButtonText: 'Sí, eliminar',
       cancelButtonText: 'Cancelar',
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        // Aquí iría la lógica para eliminar el doctor del backend
-        console.log('Doctor eliminado:', doctor);
-        Swal.fire({
-          icon: 'success',
-          title: 'Eliminado',
-          text: 'El doctor ha sido eliminado correctamente',
-          confirmButtonColor: '#0d9488',
-        });
+        try {
+          const token = localStorage.getItem("token");
+          if (!token) throw new Error("No se encontró el token de autenticación.");
+
+          const response = await fetch('http://localhost:5000/admin/users/deleteDoctor', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ id: doctor.id }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al eliminar el doctor');
+          }
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Eliminado',
+            text: 'El doctor ha sido eliminado correctamente',
+            confirmButtonColor: '#0d9488',
+          });
+          // Refrescar la lista de doctores
+          fetchDoctors();
+        } catch (error) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message,
+            confirmButtonColor: '#0d9488',
+          });
+        }
       }
     });
   };
@@ -87,6 +148,7 @@ console.log(doctors)
                 <tr className="text-teal-800">
                   <th className="p-3">Foto</th>
                   <th className="p-3">Nombre</th>
+                  <th className="p-3">Apellido</th>
                   <th className="p-3">Especialidad</th>
                   <th className="p-3">Email</th>
                   <th className="p-3">Número de Licencia</th>
@@ -114,6 +176,7 @@ console.log(doctors)
                       )}
                     </td>
                     <td className="p-3">{doctor.nombre}</td>
+                    <td className="p-3">{doctor.apellido}</td>
                     <td className="p-3">{doctor.especialidad}</td>
                     <td className="p-3">{doctor.email}</td>
                     <td className="p-3">{doctor.numero_licencia}</td>
@@ -201,6 +264,17 @@ console.log(doctors)
                   value={selectedDoctor.nombre}
                   onChange={(e) =>
                     setSelectedDoctor({ ...selectedDoctor, nombre: e.target.value })
+                  }
+                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 mb-2">Apellido</label>
+                <input
+                  type="text"
+                  value={selectedDoctor.apellido}
+                  onChange={(e) =>
+                    setSelectedDoctor({ ...selectedDoctor, apellido: e.target.value })
                   }
                   className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
