@@ -11,6 +11,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@paypal/checkout-server-sdk": "^1.0.3",
     "axios": "^1.8.3",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
@@ -23,6 +24,7 @@
     "mysql2": "^3.13.0",
     "node-fetch": "^3.3.2",
     "nodemailer": "^6.10.0",
-    "npm": "^11.2.0"
+    "npm": "^11.2.0",
+    "pdfkit": "^0.16.0"
   }
 }

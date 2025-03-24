@@ -23,6 +23,9 @@ import AddProduct from "../Pages/Admin/AddProduct.jsx";
 import HomeDoctor from "../Pages/Doctor/HomeDoctor.jsx";
 
 
+import WorkOrderForm from "../Pages/WorkOrderForm.jsx";
+
+
 export const routes = [
     { path: "/", element: <Home />, index: true },
     { path: "/services", element: <ServicesSection /> },
@@ -31,6 +34,7 @@ export const routes = [
     { path: "/login", element: <Login /> },
     { path: "/otpScreen", element: <OtpScreen /> },
     { path: "/pharmacy", element: <Pharmacy /> },
+    { path: "/order", element: <WorkOrderForm /> },
 
     // Rutas del paciente (protegidas)
     {
