@@ -10,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "tu_clave_secreta_aqui";
 router.get("/getDoctor/:email", async (req, res) => {
     const token = req.headers.authorization?.split(" ")[1];
 
-    console.log("SI LLEGA");
+    
 
     if (!token) {
         return res.status(401).json({ message: "No se porporcionó token" });

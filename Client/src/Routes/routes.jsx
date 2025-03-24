@@ -5,6 +5,7 @@ import MedicalReportsSection from "../Pages/MedicalReportSession";
 import RegisterPatient from "../Pages/Patients/RegisterPatient";
 import Login from "../Pages/Login";
 import OtpScreen from "../Pages/OtpScreen";
+import Pharmacy from "../Pages/Pharmacy.jsx";
 
 import HomePatient from "../Pages/Patients/HomePatient";
 import ProtectedRoute from "../Routes/ProtectedRoute.jsx";
@@ -29,6 +30,7 @@ export const routes = [
     { path: "/registerPatient", element: <RegisterPatient /> },
     { path: "/login", element: <Login /> },
     { path: "/otpScreen", element: <OtpScreen /> },
+    { path: "/pharmacy", element: <Pharmacy /> },
 
     // Rutas del paciente (protegidas)
     {

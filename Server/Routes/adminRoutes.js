@@ -61,77 +61,77 @@ router.get("/getAdmin/:email", async (req, res) => {
 // Ruta para registrar un doctor
 router.post("/registerDoctor", upload.single('foto'), async (req, res) => {
     const token = req.headers.authorization?.split(" ")[1] || "No token provided";
-  
+
     if (!token || token === "No token provided") {
-      return res.status(401).json({ message: "No se proporcionó token" });
+        return res.status(401).json({ message: "No se proporcionó token" });
     }
-  
+
     try {
-      const { email, contrasena, confirmarContrasena, nombre, apellido, especialidad, numero_licencia, adminEmail } = req.body;
-      const foto = req.file;
-  
-      // Validar campos obligatorios
-      if (!email || !contrasena || !confirmarContrasena || !nombre || !apellido || !especialidad || !numero_licencia || !adminEmail) {
-        return res.status(400).json({ message: "Faltan datos obligatorios. Asegúrate de completar todos los campos." });
-      }
-  
-      if (!foto) {
-        return res.status(400).json({ message: "La foto es obligatoria." });
-      }
-  
-      // Validar contraseña
-      if (contrasena !== confirmarContrasena) {
-        return res.status(400).json({ message: "Las contraseñas no coinciden." });
-      }
-  
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{8,}$/;
-      if (!passwordRegex.test(contrasena)) {
-        return res.status(400).json({
-          message: "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo especial (por ejemplo, !@#$%^&*()).",
-        });
-      }
-  
-      // Validar número de licencia
-      const numeroLicenciaRegex = /^\d{10}$/;
-      if (!numeroLicenciaRegex.test(numero_licencia)) {
-        return res.status(400).json({ message: "El número de licencia debe tener exactamente 10 dígitos." });
-      }
-  
-      // Verificar si el usuario ya existe
-      const [existingUser] = await db.query("SELECT * FROM usuarios WHERE email = ?", [email]);
-      if (existingUser.length > 0) {
-        return res.status(400).json({ message: "El correo ya está registrado." });
-      }
-  
-      // Iniciar transacción
-      await db.query("START TRANSACTION");
-  
-      try {
-        const hashedPassword = await bcrypt.hash(contrasena, 10);
-        const [userResult] = await db.query(
-          "INSERT INTO usuarios (email, contrasena, id_rol, fecha_registro) VALUES (?, ?, ?, NOW())",
-          [email, hashedPassword, 2]
-        );
-  
-        const id_usuario = userResult.insertId;
-  
-        // Guardar la imagen como BLOB
-        await db.query(
-          "INSERT INTO medicos (id_usuario, nombre, apellido, especialidad, numero_licencia, foto, foto_mime_type) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          [id_usuario, nombre, apellido, especialidad, numero_licencia, foto.buffer, foto.mimetype]
-        );
-  
-        await db.query("COMMIT");
-        res.status(201).json({ message: "Doctor registrado exitosamente." });
-      } catch (error) {
-        await db.query("ROLLBACK");
-        throw error;
-      }
+        const { email, contrasena, confirmarContrasena, nombre, apellido, especialidad, numero_licencia, adminEmail } = req.body;
+        const foto = req.file;
+
+        // Validar campos obligatorios
+        if (!email || !contrasena || !confirmarContrasena || !nombre || !apellido || !especialidad || !numero_licencia || !adminEmail) {
+            return res.status(400).json({ message: "Faltan datos obligatorios. Asegúrate de completar todos los campos." });
+        }
+
+        if (!foto) {
+            return res.status(400).json({ message: "La foto es obligatoria." });
+        }
+
+        // Validar contraseña
+        if (contrasena !== confirmarContrasena) {
+            return res.status(400).json({ message: "Las contraseñas no coinciden." });
+        }
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{8,}$/;
+        if (!passwordRegex.test(contrasena)) {
+            return res.status(400).json({
+                message: "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo especial (por ejemplo, !@#$%^&*()).",
+            });
+        }
+
+        // Validar número de licencia
+        const numeroLicenciaRegex = /^\d{10}$/;
+        if (!numeroLicenciaRegex.test(numero_licencia)) {
+            return res.status(400).json({ message: "El número de licencia debe tener exactamente 10 dígitos." });
+        }
+
+        // Verificar si el usuario ya existe
+        const [existingUser] = await db.query("SELECT * FROM usuarios WHERE email = ?", [email]);
+        if (existingUser.length > 0) {
+            return res.status(400).json({ message: "El correo ya está registrado." });
+        }
+
+        // Iniciar transacción
+        await db.query("START TRANSACTION");
+
+        try {
+            const hashedPassword = await bcrypt.hash(contrasena, 10);
+            const [userResult] = await db.query(
+                "INSERT INTO usuarios (email, contrasena, id_rol, fecha_registro) VALUES (?, ?, ?, NOW())",
+                [email, hashedPassword, 2]
+            );
+
+            const id_usuario = userResult.insertId;
+
+            // Guardar la imagen como BLOB
+            await db.query(
+                "INSERT INTO medicos (id_usuario, nombre, apellido, especialidad, numero_licencia, foto, foto_mime_type) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [id_usuario, nombre, apellido, especialidad, numero_licencia, foto.buffer, foto.mimetype]
+            );
+
+            await db.query("COMMIT");
+            res.status(201).json({ message: "Doctor registrado exitosamente." });
+        } catch (error) {
+            await db.query("ROLLBACK");
+            throw error;
+        }
     } catch (error) {
-      console.error("Error al registrar el doctor:", error);
-      res.status(500).json({ message: "Error interno del servidor al registrar el doctor.", error: error.message });
+        console.error("Error al registrar el doctor:", error);
+        res.status(500).json({ message: "Error interno del servidor al registrar el doctor.", error: error.message });
     }
-  });
+});
 
 
 router.get("/users/getDoctors", async (req, res) => {
@@ -335,6 +335,69 @@ router.delete("/users/deleteDoctor", async (req, res) => {
     } catch (error) {
         console.error("Error al eliminar el doctor:", error);
         res.status(500).json({ message: "Error interno del servidor al eliminar el doctor." });
+    }
+});
+
+router.post('/medicine/addMedicine', upload.single('foto'), async (req, res) => {
+    console.log("Sí llegó a /admin/medicine/addMedicine");
+    const token = req.headers.authorization?.split(" ")[1];
+
+    if (!token) {
+        return res.status(401).json({ message: "No se proporcionó token" });
+    }
+
+    try {
+        const {
+            nombre, descripcion, precio, stock, categoria, contenido_neto, unidad_medida, presentacion,
+            requiere_receta, es_antibiotioco, indicaciones, contraindicaciones, fecha_vencimiento, lote, proveedor, estado, adminEmail
+        } = req.body;
+
+        const foto = req.file ? {
+            foto_data: req.file.buffer,
+            foto_mime_type: req.file.mimetype,
+        } : { foto_data: null, foto_mime_type: null };
+
+        // Query para insertar el medicamento
+        const query = `
+            INSERT INTO Medicamentos (
+                nombre, descripcion, precio, stock, foto, foto_mime_type, categoria, contenido_neto, 
+                unidad_medida, presentacion, requiere_receta, es_antibiotioco, indicaciones, contraindicaciones, 
+                fecha_vencimiento, lote, proveedor, estado
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const values = [
+            nombre,
+            descripcion || null,
+            parseFloat(precio),
+            parseInt(stock),
+            foto.foto_data,
+            foto.foto_mime_type,
+            categoria,
+            contenido_neto || null,
+            unidad_medida || null,
+            presentacion || null,
+            requiere_receta === 'true', // Convertimos a booleano
+            es_antibiotioco === 'true', // Convertimos a booleano
+            indicaciones || null,
+            contraindicaciones || null,
+            fecha_vencimiento || null,
+            lote || null,
+            proveedor || null,
+            estado || 'Activo'
+        ];
+
+        // Ejecutar la inserción usando tu db importada
+        const [result] = await db.execute(query, values); // Usamos db directamente
+
+        // Respuesta exitosa
+        res.status(201).json({
+            message: 'Medicamento registrado exitosamente',
+            id_medicamento: result.insertId
+        });
+    } catch (error) {
+        console.error('Error al registrar el medicamento:', error);
+        res.status(500).json({ message: error.message || 'Error al registrar el medicamento' });
     }
 });
 
