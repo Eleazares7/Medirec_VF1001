@@ -43,9 +43,7 @@ router.get("/getDoctor/:email", async (req, res) => {
 
         const doctor = rows[0];
 
-        console.log(doctor);
 
-        console.log("Datos enviados al frontend: ", doctor)
         res.status(200).json(doctor);
     } catch (error) {
         console.error("Error al obtener datos del Doctor:", error);

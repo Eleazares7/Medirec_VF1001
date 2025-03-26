@@ -77,10 +77,6 @@ router.get("/patient/:email", async (req, res) => {
             patient.fotoData = null;
         }
 
-        console.log("Datos enviados al frontend:", {
-            ...patient,
-            fotoData: patient.fotoData ? "[Buffer]" : null, // Evitar loguear binarios completos
-        });
         res.status(200).json(patient);
     } catch (error) {
         console.error("Error al obtener datos del paciente:", error);

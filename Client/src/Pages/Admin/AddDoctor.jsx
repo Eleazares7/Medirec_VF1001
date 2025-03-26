@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 import NavbarAdmin from '../../Components/AdminComponents/HomeAdmin/NavBarAdmin';
 import { AuthContext } from '../../Context/AuthContext';
 import { useDropzone } from 'react-dropzone';
-import { FaEye, FaEyeSlash } from 'react-icons/fa'; // Importamos los íconos de ojo
-import Swal from 'sweetalert2'; // Importamos SweetAlert2
+import { FaEye, FaEyeSlash, FaPlus, FaTrash } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 
 const AddDoctor = () => {
     const { user } = useContext(AuthContext);
@@ -13,25 +13,26 @@ const AddDoctor = () => {
     const [formData, setFormData] = useState({
         email: '',
         contrasena: '',
-        confirmarContrasena: '', // Nuevo campo para confirmar contraseña
+        confirmarContrasena: '',
         nombre: '',
         apellido: '',
         especialidad: '',
         numero_licencia: '',
         foto: null,
+        horarios: [],
     });
-    const [previewFoto, setPreviewFoto] = useState(null); // Estado para la vista previa de la foto
+    const [previewFoto, setPreviewFoto] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [showPassword, setShowPassword] = useState(false); // Estado para mostrar/ocultar contraseña
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Estado para mostrar/ocultar confirmar contraseña
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Configuración de react-dropzone
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         accept: {
             'image/*': ['.jpeg', '.jpg', '.png', '.gif'],
         },
-        maxSize: 5 * 1024 * 1024, // Límite de 5MB
-        multiple: false, // Solo permitir un archivo
+        maxSize: 5 * 1024 * 1024,
+        multiple: false,
         onDrop: (acceptedFiles, fileRejections) => {
             if (fileRejections.length > 0) {
                 if (fileRejections[0].errors[0].code === 'file-too-large') {
@@ -86,13 +87,54 @@ const AddDoctor = () => {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
+    // Manejar cambios en los campos de horarios
+    const handleHorarioChange = (index, e) => {
+        const { name, value } = e.target;
+        const updatedHorarios = [...formData.horarios];
+        updatedHorarios[index] = { ...updatedHorarios[index], [name]: value };
+        setFormData((prev) => ({ ...prev, horarios: updatedHorarios }));
+    };
+
+    // Agregar un nuevo horario
+    const addHorario = (e) => {
+        e.preventDefault(); // Evitar que el formulario se envíe
+        setFormData((prev) => ({
+            ...prev,
+            horarios: [
+                ...prev.horarios,
+                {
+                    dia_semana: '',
+                    fecha: '',
+                    hora_inicio: '',
+                    hora_fin: '',
+                    estado: 'Disponible',
+                },
+            ],
+        }));
+    };
+
+    // Eliminar un horario
+    const removeHorario = (index) => {
+        const updatedHorarios = formData.horarios.filter((_, i) => i !== index);
+        setFormData((prev) => ({ ...prev, horarios: updatedHorarios }));
+    };
+
     // Manejar el envío del formulario
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
 
         // Validaciones en el frontend
-        if (!formData.email || !formData.contrasena || !formData.confirmarContrasena || !formData.nombre || !formData.apellido || !formData.especialidad || !formData.numero_licencia) {
+        if (
+            !formData.email ||
+            !formData.contrasena ||
+            !formData.confirmarContrasena ||
+            !formData.nombre ||
+            !formData.apellido ||
+            !formData.especialidad ||
+            !formData.numero_licencia ||
+            !formData.foto
+        ) {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
@@ -115,6 +157,45 @@ const AddDoctor = () => {
             return;
         }
 
+        // Validar los horarios
+        for (const horario of formData.horarios) {
+            if (!horario.dia_semana && !horario.fecha) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Debe especificar un día de la semana o una fecha para cada horario.',
+                    confirmButtonColor: '#0d9488',
+                });
+                setLoading(false);
+                return;
+            }
+
+            if (!horario.hora_inicio || !horario.hora_fin) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Por favor, completa todos los campos obligatorios de los horarios.',
+                    confirmButtonColor: '#0d9488',
+                });
+                setLoading(false);
+                return;
+            }
+
+            // Validar que la hora de inicio sea anterior a la hora de fin
+            const inicio = new Date(`1970-01-01T${horario.hora_inicio}:00`);
+            const fin = new Date(`1970-01-01T${horario.hora_fin}:00`);
+            if (inicio >= fin) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'La hora de inicio debe ser anterior a la hora de fin en todos los horarios.',
+                    confirmButtonColor: '#0d9488',
+                });
+                setLoading(false);
+                return;
+            }
+        }
+
         try {
             const token = localStorage.getItem("token");
 
@@ -122,18 +203,18 @@ const AddDoctor = () => {
             const doctorFormData = new FormData();
             doctorFormData.append('email', formData.email);
             doctorFormData.append('contrasena', formData.contrasena);
-            doctorFormData.append('confirmarContrasena', formData.confirmarContrasena); // Agregar confirmarContrasena
+            doctorFormData.append('confirmarContrasena', formData.confirmarContrasena);
             doctorFormData.append('nombre', formData.nombre);
             doctorFormData.append('apellido', formData.apellido);
             doctorFormData.append('especialidad', formData.especialidad);
             doctorFormData.append('numero_licencia', formData.numero_licencia);
-            doctorFormData.append('adminEmail', user.email); // Enviar el correo del administrador autenticado
+            doctorFormData.append('adminEmail', user.email);
             if (formData.foto) {
                 doctorFormData.append('foto', formData.foto);
             }
+            doctorFormData.append('horarios', JSON.stringify(formData.horarios));
 
-            // Enviar todos los datos al endpoint /admin/registerDoctor
-            const response = await fetch('http://localhost:5000/admin/registerDoctor', { // Ajustar el puerto a 3000
+            const response = await fetch('http://localhost:5000/admin/registerDoctor', {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -146,7 +227,6 @@ const AddDoctor = () => {
                 throw new Error(errorData.message || 'Error al registrar el doctor.');
             }
 
-            // Mostrar mensaje de éxito con SweetAlert2
             await Swal.fire({
                 icon: 'success',
                 title: 'Éxito',
@@ -154,7 +234,6 @@ const AddDoctor = () => {
                 confirmButtonColor: '#0d9488',
             });
 
-            // Limpiar el formulario
             setFormData({
                 email: '',
                 contrasena: '',
@@ -164,6 +243,7 @@ const AddDoctor = () => {
                 especialidad: '',
                 numero_licencia: '',
                 foto: null,
+                horarios: [],
             });
             setShowPassword(false);
             setShowConfirmPassword(false);
@@ -171,9 +251,8 @@ const AddDoctor = () => {
                 URL.revokeObjectURL(previewFoto);
                 setPreviewFoto(null);
             }
-            setTimeout(() => navigate('/admin/home'), 500); // Redirigir después de 0.5 segundos
+            setTimeout(() => navigate('/admin/home'), 500);
         } catch (error) {
-            // Mostrar error con SweetAlert2
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
@@ -195,7 +274,6 @@ const AddDoctor = () => {
                     transition={{ duration: 0.7, ease: 'easeInOut' }}
                     className="max-w-xl w-full bg-white rounded-2xl shadow-xl p-8 transform transition-all duration-300 hover:shadow-2xl"
                 >
-                    {/* Header */}
                     <div className="text-center mb-10">
                         <motion.h1
                             whileHover={{ scale: 1.05 }}
@@ -214,7 +292,6 @@ const AddDoctor = () => {
                         </motion.p>
                     </div>
 
-                    {/* Formulario */}
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Email */}
                         <div>
@@ -360,12 +437,13 @@ const AddDoctor = () => {
                             </label>
                             <div
                                 {...getRootProps()}
-                                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 cursor-pointer ${isDragActive ? 'border-teal-500 bg-teal-50' : 'border-teal-300 bg-teal-50 hover:bg-teal-100 hover:border-teal-400'
-                                    }`}
+                                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 cursor-pointer ${isDragActive ? 'border-teal-500 bg-teal-50' : 'border-teal-300 bg-teal-50 hover:bg-teal-100 hover:border-teal-400'}`}
                             >
                                 <input {...getInputProps()} />
                                 {formData.foto ? (
-                                    <p className="text-teal-900 font-medium">Archivo seleccionado: <span className="text-gray-600">{formData.foto.name}</span></p>
+                                    <p className="text-teal-900 font-medium">
+                                        Archivo seleccionado: <span className="text-gray-600">{formData.foto.name}</span>
+                                    </p>
                                 ) : isDragActive ? (
                                     <p className="text-teal-900 font-medium">Suelta la imagen aquí...</p>
                                 ) : (
@@ -374,7 +452,6 @@ const AddDoctor = () => {
                                     </p>
                                 )}
                             </div>
-                            {/* Vista previa de la foto */}
                             {previewFoto && (
                                 <motion.div
                                     className="flex justify-center mt-4"
@@ -389,6 +466,127 @@ const AddDoctor = () => {
                                     />
                                 </motion.div>
                             )}
+                        </div>
+
+                        {/* Horarios */}
+                        <div>
+                            <label className="block text-sm font-medium text-teal-900 mb-2">
+                                Horarios del Doctor
+                            </label>
+                            {formData.horarios.map((horario, index) => (
+                                <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="border border-teal-200 rounded-lg p-4 mb-4 relative"
+                                >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Día de la semana */}
+                                        <div>
+                                            <label
+                                                htmlFor={`dia_semana_${index}`}
+                                                className="block text-sm font-medium text-teal-900 mb-1"
+                                            >
+                                                Día de la Semana *
+                                            </label>
+                                            <select
+                                                id={`dia_semana_${index}`}
+                                                name="dia_semana"
+                                                value={horario.dia_semana}
+                                                onChange={(e) => handleHorarioChange(index, e)}
+                                                className="block w-full px-4 py-3 border border-teal-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 bg-teal-50/50 text-gray-800"
+                                                required
+                                            >
+                                                <option value="">Selecciona un día</option>
+                                                <option value="Lunes">Lunes</option>
+                                                <option value="Martes">Martes</option>
+                                                <option value="Miércoles">Miércoles</option>
+                                                <option value="Jueves">Jueves</option>
+                                                <option value="Viernes">Viernes</option>
+                                                <option value="Sábado">Sábado</option>
+                                                <option value="Domingo">Domingo</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Fecha (opcional) */}
+                                        <div>
+                                            <label
+                                                htmlFor={`fecha_${index}`}
+                                                className="block text-sm font-medium text-teal-900 mb-1"
+                                            >
+                                                Fecha (Opcional)
+                                            </label>
+                                            <input
+                                                type="date"
+                                                id={`fecha_${index}`}
+                                                name="fecha"
+                                                value={horario.fecha}
+                                                onChange={(e) => handleHorarioChange(index, e)}
+                                                className="block w-full px-4 py-3 border border-teal-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 bg-teal-50/50 text-gray-800"
+                                            />
+                                        </div>
+
+                                        {/* Hora de Inicio */}
+                                        <div>
+                                            <label
+                                                htmlFor={`hora_inicio_${index}`}
+                                                className="block text-sm font-medium text-teal-900 mb-1"
+                                            >
+                                                Hora de Inicio *
+                                            </label>
+                                            <input
+                                                type="time"
+                                                id={`hora_inicio_${index}`}
+                                                name="hora_inicio"
+                                                value={horario.hora_inicio}
+                                                onChange={(e) => handleHorarioChange(index, e)}
+                                                className="block w-full px-4 py-3 border border-teal-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 bg-teal-50/50 text-gray-800"
+                                                required
+                                            />
+                                        </div>
+
+                                        {/* Hora de Fin */}
+                                        <div>
+                                            <label
+                                                htmlFor={`hora_fin_${index}`}
+                                                className="block text-sm font-medium text-teal-900 mb-1"
+                                            >
+                                                Hora de Fin *
+                                            </label>
+                                            <input
+                                                type="time"
+                                                id={`hora_fin_${index}`}
+                                                name="hora_fin"
+                                                value={horario.hora_fin}
+                                                onChange={(e) => handleHorarioChange(index, e)}
+                                                className="block w-full px-4 py-3 border border-teal-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 bg-teal-50/50 text-gray-800"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Botón para eliminar horario */}
+                                    <button
+                                        type="button"
+                                        onClick={() => removeHorario(index)}
+                                        className="absolute top-2 right-2 text-red-500 hover:text-red-700 transition-colors duration-200"
+                                    >
+                                        <FaTrash size={18} />
+                                    </button>
+                                </motion.div>
+                            ))}
+
+                            {/* Botón para agregar un nuevo horario */}
+                            <motion.button
+                                type="button"
+                                onClick={addHorario}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="flex items-center px-4 py-2 bg-teal-500 text-white rounded-lg font-semibold shadow-md transition-all duration-300 hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2"
+                            >
+                                <FaPlus className="mr-2" /> Agregar Horario
+                            </motion.button>
                         </div>
 
                         {/* Botones */}
@@ -407,8 +605,7 @@ const AddDoctor = () => {
                                 disabled={loading}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                className={`flex-1 px-6 py-3 bg-teal-600 text-white rounded-full font-semibold shadow-lg transition-all duration-300 ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2'
-                                    }`}
+                                className={`flex-1 px-6 py-3 bg-teal-600 text-white rounded-full font-semibold shadow-lg transition-all duration-300 ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2'}`}
                             >
                                 {loading ? 'Registrando...' : 'Registrar Doctor'}
                             </motion.button>

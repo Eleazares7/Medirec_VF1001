@@ -13,6 +13,7 @@ const HomeDoctor = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let isMounted = true;
     const fetchDoctorData = async () => {
       if (!user || !user.email) {
         navigate('/login');
@@ -36,30 +37,32 @@ const HomeDoctor = () => {
         }
 
         const data = await response.json();
-        setDoctorData(data);
-
-        if (data.foto && data.foto.data) {
-          const byteArray = new Uint8Array(data.foto.data);
-          const blob = new Blob([byteArray], { type: data.fotoMimeType || 'image/jpeg' });
-          const url = URL.createObjectURL(blob);
-          setPhotoUrl(url);
+        if (isMounted) {
+          setDoctorData(data);
+          if (data.foto && data.foto.data) {
+            const byteArray = new Uint8Array(data.foto.data);
+            const blob = new Blob([byteArray], { type: data.fotoMimeType || 'image/jpeg' });
+            const url = URL.createObjectURL(blob);
+            setPhotoUrl(url);
+          }
         }
       } catch (error) {
         console.error('Error al cargar los datos del doctor:', error);
-        setError(error.message);
+        if (isMounted) setError(error.message);
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     fetchDoctorData();
 
     return () => {
+      isMounted = false;
       if (photoUrl) {
         URL.revokeObjectURL(photoUrl);
       }
     };
-  }, [user, navigate]);
+  }, [user?.email, navigate]); // Cambiamos [user, navigate] por [user?.email, navigate]
 
   // Animación de entrada
   useEffect(() => {

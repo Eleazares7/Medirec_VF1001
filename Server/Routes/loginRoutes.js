@@ -5,7 +5,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 const router = express.Router();
-const JWT_SECRET = "tu_clave_secreta_aqui"; // Usa .env en producción
+const JWT_SECRET = "tu_clave_secreta_aqui";
 
 router.post("/loginValidation", async (req, res) => {
     const { contrasena, email } = req.body;

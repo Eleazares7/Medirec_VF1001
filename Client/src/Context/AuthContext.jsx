@@ -1,5 +1,4 @@
-// src/Context/AuthContext.jsx
-import React, { createContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect, useMemo } from "react";
 
 export const AuthContext = createContext();
 
@@ -24,11 +23,7 @@ export const AuthProvider = ({ children }) => {
           console.log("Respuesta de /verify:", data);
 
           if (response.ok) {
-            setUser({
-              id: data.id,
-              email: data.email,
-              role: data.role,
-            });
+            setUser({ id: data.id, email: data.email, role: data.role });
             console.log("Usuario establecido:", { id: data.id, email: data.email, role: data.role });
           } else {
             localStorage.removeItem("token");
@@ -47,7 +42,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     verifyToken();
-  }, []);
+  }, []); // Dependencias vacías, esto está bien
 
   const login = (userData, token) => {
     setUser(userData);
@@ -60,12 +55,13 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("token");
   };
 
-  const value = {
+  // Usar useMemo para estabilizar el valor del contexto
+  const value = useMemo(() => ({
     user,
     login,
     logout,
     loading,
-  };
+  }), [user, loading]);
 
   return (
     <AuthContext.Provider value={value}>
