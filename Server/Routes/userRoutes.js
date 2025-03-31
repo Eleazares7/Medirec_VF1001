@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 import axios from "axios";
 import jwt from "jsonwebtoken";
 import fs from "fs/promises"; // Para leer archivos
+import { log } from "console";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "tu_clave_secreta_aqui";
@@ -77,12 +78,15 @@ router.get("/patient/:email", async (req, res) => {
             patient.fotoData = null;
         }
 
+        console.log(patient);
+
         res.status(200).json(patient);
     } catch (error) {
         console.error("Error al obtener datos del paciente:", error);
         res.status(500).json({ message: "Error interno del servidor" });
     }
 });
+
 
 // Ruta para iniciar el registro y enviar OTP
 router.post("/register-patient", upload.single("foto"), async (req, res) => {
@@ -110,6 +114,7 @@ router.post("/register-patient", upload.single("foto"), async (req, res) => {
         } = req.body;
 
         const foto = req.file; // Multer guarda la foto en disco
+        log
 
         if (!email || !contrasena || !confirmarContrasena) {
             return res.status(400).json({ message: "Faltan campos requeridos" });
@@ -299,9 +304,154 @@ router.get("/codigo-postal/:cp", async (req, res) => {
     }
 });
 
+router.put('/updatePatient/:email', upload.single('foto'), async (req, res) => {
+    const token = req.headers.authorization?.split(" ")[1];
 
+    if (!token) {
+        return res.status(401).json({ message: "No se proporcionó token" });
+    }
+
+    const { email } = req.params;
+    const {
+        nombre,
+        apellido,
+        telefono,
+        fechaNacimiento,
+        calle,
+        numeroExterior,
+        entreCalle1,
+        entreCalle2,
+        codigoPostal,
+        asentamiento,
+        municipio,
+        estado,
+        pais,
+        alergias,
+        antecedentes_medicos,
+        nombreFoto,
+        pathFoto,
+    } = req.body;
+
+    const foto = req.file ? req.file.buffer : null;
+    const fotoMimeType = req.file ? req.file.mimetype : null;
+
+    try {
+        // 1. Buscar el id_usuario en la tabla usuarios usando el email
+        const [user] = await db.query('SELECT id_usuario FROM usuarios WHERE email = ?', [email]);
+
+        if (!user || user.length === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+
+        const id_usuario = user[0].id_usuario;
+
+        // 2. Buscar el paciente en la tabla pacientes usando el id_usuario
+        const [patient] = await db.query('SELECT id_paciente FROM pacientes WHERE id_usuario = ?', [id_usuario]);
+
+        if (!patient || patient.length === 0) {
+            return res.status(404).json({ message: 'Paciente no encontrado' });
+        }
+
+        const id_paciente = patient[0].id_paciente;
+
+        // 3. Construir el objeto de actualización con los campos que se enviaron
+        const updateData = {};
+        const updateParams = [];
+
+        // Lista de campos que se pueden actualizar
+        const fields = {
+            nombre,
+            apellido,
+            telefono,
+            fechaNacimiento,
+            calle,
+            numeroExterior,
+            entreCalle1,
+            entreCalle2,
+            codigoPostal,
+            asentamiento,
+            municipio,
+            estado,
+            pais,
+            alergias,
+            antecedentes_medicos,
+            nombreFoto,
+            pathFoto,
+        };
+
+        // Añadir solo los campos que no son undefined al objeto de actualización
+        for (const [key, value] of Object.entries(fields)) {
+            if (value !== undefined) {
+                updateData[key] = value;
+                updateParams.push(value);
+            }
+        }
+
+        // Manejar la foto y sus campos relacionados
+        if (foto) {
+            updateData.foto = foto;
+            updateData.fotoMimeType = fotoMimeType;
+            updateParams.push(foto, fotoMimeType);
+        }
+
+        // Si no hay datos para actualizar, devolver un mensaje
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ message: 'No se proporcionaron datos para actualizar' });
+        }
+
+        // 4. Construir la consulta SQL dinámicamente
+        const setClause = Object.keys(updateData)
+            .map((key) => `${key} = ?`)
+            .join(', ');
+        updateParams.push(id_paciente);
+
+        const query = `UPDATE pacientes SET ${setClause} WHERE id_paciente = ?`;
+
+        // 5. Ejecutar la consulta
+        await db.query(query, updateParams);
+
+        // 6. Obtener los datos actualizados del paciente
+        const [updatedPatient] = await db.query('SELECT * FROM pacientes WHERE id_paciente = ?', [id_paciente]);
+
+        // 7. Preparar la respuesta con los datos actualizados
+        const responseData = {
+            id_paciente: updatedPatient[0].id_paciente,
+            id_usuario: updatedPatient[0].id_usuario,
+            nombre: updatedPatient[0].nombre,
+            apellido: updatedPatient[0].apellido,
+            telefono: updatedPatient[0].telefono,
+            fechaNacimiento: updatedPatient[0].fechaNacimiento,
+            calle: updatedPatient[0].calle,
+            numeroExterior: updatedPatient[0].numeroExterior,
+            entreCalle1: updatedPatient[0].entreCalle1,
+            entreCalle2: updatedPatient[0].entreCalle2,
+            codigoPostal: updatedPatient[0].codigoPostal,
+            asentamiento: updatedPatient[0].asentamiento,
+            municipio: updatedPatient[0].municipio,
+            estado: updatedPatient[0].estado,
+            pais: updatedPatient[0].pais,
+            alergias: updatedPatient[0].alergias,
+            antecedentes_medicos: updatedPatient[0].antecedentes_medicos,
+            nombreFoto: updatedPatient[0].nombreFoto,
+            pathFoto: updatedPatient[0].pathFoto,
+            fotoMimeType: updatedPatient[0].fotoMimeType,
+            // No devolvemos el BLOB directamente, sino que podemos devolver un indicador
+            foto: updatedPatient[0].foto ? 'Presente' : 'No presente',
+        };
+
+        // 8. Enviar la respuesta al frontend
+        res.status(200).json({
+            success: true,
+            message: 'Paciente actualizado correctamente',
+            data: responseData,
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error al actualizar el paciente', error: error.message });
+    }
+});
+
+// Ruta para obtener lista de doctores
 router.get('/getAllDoctors', async (req, res) => {
-
     const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
@@ -310,63 +460,188 @@ router.get('/getAllDoctors', async (req, res) => {
 
     try {
         const [doctors] = await db.query(
-            `SELECT * from medicos`
+            `SELECT medicos.id_medico, medicos.id_usuario, medicos.nombre, medicos.apellido, 
+                    horarios_medicos.dia_semana, horarios_medicos.hora_inicio, horarios_medicos.hora_fin 
+             FROM medicos 
+             LEFT JOIN horarios_medicos ON medicos.id_medico = horarios_medicos.id_medico`
         );
 
-        res.status(200).json(doctors);
+        // Agrupar los horarios por médico
+        const doctorsWithSchedules = doctors.reduce((acc, curr) => {
+            const doctor = acc.find(d => d.id_medico === curr.id_medico);
+            if (doctor) {
+                doctor.schedules.push({
+                    dia_semana: curr.dia_semana,
+                    hora_inicio: curr.hora_inicio,
+                    hora_fin: curr.hora_fin
+                });
+            } else {
+                acc.push({
+                    id_medico: curr.id_medico,
+                    id_usuario: curr.id_usuario,
+                    nombre: curr.nombre,
+                    apellido: curr.apellido,
+                    schedules: curr.dia_semana ? [{
+                        dia_semana: curr.dia_semana,
+                        hora_inicio: curr.hora_inicio,
+                        hora_fin: curr.hora_fin
+                    }] : []
+                });
+            }
+            return acc;
+        }, []);
+
+        res.status(200).json(doctorsWithSchedules);
     } catch (error) {
         console.error('Error al obtener los médicos:', error);
         res.status(500).json({ message: 'Error interno del servidor al obtener los médicos.' });
     }
 });
 
+/*-------> Ruta para Generar una cita medica <-------*/
 router.post('/createAppointment', async (req, res) => {
     const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+        return res.status(401).json({ message: "No se proporcionó token" });
+    }
+
+    const { id_usuario, id_medico, fecha_consulta, dia_consulta, hora_consulta, motivo, estado } = req.body;
+
+    try {
+        // Verificar si ya existe una consulta con el mismo médico, fecha y hora
+        const [existingAppointment] = await db.query(
+            `SELECT id_consulta 
+             FROM consultas 
+             WHERE id_medico = ? 
+             AND fecha_consulta = ? 
+             AND hora_consulta = ?`,
+            [id_medico, fecha_consulta, hora_consulta]
+        );
+
+        const [getIdPatient] = await db.query(
+            `SELECT id_paciente 
+             FROM pacientes 
+             WHERE id_usuario = ?`,
+            [id_usuario]
+        );
+
+        if (getIdPatient.length === 0) {
+            return res.status(404).json({ message: 'Paciente no encontrado' });
+        }
+
+        const id_paciente = getIdPatient[0].id_paciente;
+
+        if (existingAppointment.length > 0) {
+            return res.status(409).json({
+                message: 'El horario seleccionado ya está ocupado para este médico en esa fecha.'
+            });
+        }
+
+        // Opcional: Validar que dia_consulta coincide con fecha_consulta
+        const date = new Date(fecha_consulta);
+        const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const calculatedDay = daysOfWeek[date.getUTCDay()];
+        if (calculatedDay !== dia_consulta) {
+            return res.status(400).json({
+                message: `El día de la semana (${dia_consulta}) no coincide con la fecha (${fecha_consulta}).`
+            });
+        }
+
+        // Insertar la nueva consulta con dia_consulta
+        const [result] = await db.query(
+            `INSERT INTO consultas (id_paciente, id_medico, fecha_consulta, dia_consulta, hora_consulta, motivo, estado) 
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [id_paciente, id_medico, fecha_consulta, dia_consulta, hora_consulta, motivo, estado]
+        );
+
+        res.status(201).json({
+            message: 'Cita médica creada exitosamente.',
+            id_consulta: result.insertId
+        });
+    } catch (error) {
+        console.error('Error al crear la cita:', error);
+        res.status(500).json({ message: 'Error interno del servidor al crear la cita.' });
+    }
+});
+
+/*-------> Ruta para obtener citas por médico y fecha <-------*/
+router.get('/getAppointmentsByDoctorAndDate', async (req, res) => {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+        return res.status(401).json({ message: "No se proporcionó token" });
+    }
+
+    const { id_medico, fecha_consulta, dia_consulta } = req.query;
+
+    console.log("DIA DE CONSULTA: " + dia_consulta);
+
+    try {
+        const [appointments] = await db.query(
+            `SELECT hora_consulta 
+             FROM consultas 
+             WHERE id_medico = ? 
+             AND fecha_consulta = ?
+             AND dia_consulta = ?`,
+            [id_medico, fecha_consulta, dia_consulta]
+        );
+
+        console.log("CONSULTAS", appointments);
+
+
+        res.status(200).json(appointments.map(appointment => appointment.hora_consulta));
+    } catch (error) {
+        console.error('Error al obtener citas existentes:', error);
+        res.status(500).json({ message: 'Error interno del servidor al obtener citas.' });
+    }
+});
+
+/*-------> Ruta para obtener citas del usuario <-------*/
+router.get('/getUserAppointments', async (req, res) => {
+    const token = req.headers.authorization?.split(" ")[1];
+
 
     if (!token) {
         return res.status(401).json({ message: "No se proporcionó token" });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-
-
-    const { id_paciente, id_medico, fecha_consulta, hora_consulta, motivo, estado } = req.body;
-
-
-
-    // Validar que todos los campos necesarios estén presentes
-    if (!id_paciente || !id_medico || !fecha_consulta || !hora_consulta || !motivo || !estado) {
-        return res.status(400).json({ message: 'Todos los campos son obligatorios' });
-    }
-
-
-    // Verificar que el id_paciente coincida con el usuario autenticado
-    if (id_paciente !== decoded.id) {
-        return res.status(403).json({ message: 'No puedes crear citas para otro usuario' });
-    }
-
-    const [searchIdPaciente] = await db.query("SELECT id_paciente FROM pacientes where id_usuario = ?", decoded.id);
-
-    if (searchIdPaciente === 0) {
-        return res.status(404).json({ message: "Paciente no encontrado" });
-    }
-
-
-
+    
 
     try {
+        // Obtener el id_usuario del token (suponiendo que el token contiene esta información)
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const id_usuario = decoded.id;
 
-        const [result] = await db.query(
-            'INSERT INTO consultas (id_paciente, id_medico, fecha_consulta, hora_consulta, motivo, estado) VALUES (?, ?, ?, ?, ?, ?)',
-            [searchIdPaciente[0].id_paciente, id_medico, fecha_consulta, hora_consulta, motivo, estado]
+        // Obtener el id_paciente asociado al usuario
+        const [patient] = await db.query(
+            `SELECT id_paciente 
+             FROM pacientes 
+             WHERE id_usuario = ?`,
+            [id_usuario]
         );
 
+        if (patient.length === 0) {
+            return res.status(404).json({ message: 'Paciente no encontrado' });
+        }
 
-        res.status(201).json({ message: 'Cita creada exitosamente', appointmentId: result.insertId });
+        const id_paciente = patient[0].id_paciente;
+
+        // Obtener todas las citas del paciente con los datos del médico
+        const [appointments] = await db.query(
+            `SELECT c.id_consulta, c.id_medico, c.fecha_consulta, c.dia_consulta, c.hora_consulta, c.motivo, c.estado, 
+                    m.nombre AS medico_nombre, m.apellido AS medico_apellido
+             FROM consultas c
+             JOIN medicos m ON c.id_medico = m.id_medico
+             WHERE c.id_paciente = ?
+             ORDER BY c.fecha_consulta DESC`,
+            [id_paciente]
+        );
+
+        res.status(200).json(appointments);
     } catch (error) {
-        console.error('Error al crear la cita:', error);
-        res.status(500).json({ message: 'Error interno del servidor' });
+        console.error('Error al obtener las citas del usuario:', error);
+        res.status(500).json({ message: 'Error interno del servidor al obtener las citas.' });
     }
 });
+
+
 export default router;

@@ -19,11 +19,11 @@ const ManagementAppointments = () => {
     };
 
     const handleViewHistory = () => {
-        navigate('/patient/appointment-history');
+        navigate('/patient/viewAppointments');
     };
 
     const handleViewActiveAppointments = () => {
-        navigate('/patient/active-appointments');
+        navigate('/patient/viewAppointments');
     };
 
     return (

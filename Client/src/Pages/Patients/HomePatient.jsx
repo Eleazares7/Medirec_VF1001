@@ -107,7 +107,7 @@ const HomePatient = () => {
                 Tu salud es nuestra prioridad. Explora todo lo que MediRec tiene para ti.
               </p>
               <button
-                onClick={() => navigate("/generate-appointment")}
+                onClick={() => navigate("/patient/createAppointment")}
                 className="bg-teal-600 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:bg-teal-700 transform hover:scale-105 transition-all duration-300 animate-fade-in-up"
                 style={{ animationDelay: "0.6s" }}
               >
@@ -137,7 +137,7 @@ const HomePatient = () => {
           {[
             { title: "Citas Médicas", desc: "Agenda y gestiona tus citas", path: "/patient/manageAppointments", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
             { title: "Farmacia", desc: "Ordena tus medicamentos", path: "/pharmacy", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h-2m-12 0h-2M12 7v6m0 0l-3-3m3 3l3-3" },
-            { title: "Historial", desc: "Revisa tu historial médico", path: "/medical-history", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
+            { title: "Historial", desc: "Revisa tu historial de tus acciones", path: "/patient/manageHistorial", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
           ].map((item, index) => (
             <div
               key={item.title}

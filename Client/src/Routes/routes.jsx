@@ -14,6 +14,8 @@ import HomePatient from "../Pages/Patients/HomePatient";
 import Profile from "../Pages/Patients/Profile.jsx";
 import CreateAppointment from "../Pages/Patients/CreateAppointment.jsx";
 import ManagementAppointments from "../Pages/Patients/ManagementAppointments.jsx";
+import ViewAppointments from "../Pages/Patients/ViewAppointments.jsx";
+import ManagementHistorial from "../Pages/Patients/ManageHistorial.jsx";
 
 // ADMINISTRATOR ROUTES
 import HomeAdmin from "../Pages/Admin/HomeAdmin.jsx";
@@ -40,13 +42,15 @@ export const routes = [
     { path: "/login", element: <Login /> },
     { path: "/otpScreen", element: <OtpScreen /> },
     { path: "/pharmacy", element: <Pharmacy /> },
-    
+
 
     /*------------------------------------- RUTAS DEL PACIENTE -------------------------------------*/
     { path: "/patient/home", element: <ProtectedRoute element={<HomePatient />} allowedRole={1} /> },
     { path: "/patient/profile", element: <ProtectedRoute element={<Profile />} allowedRole={1} /> },
     { path: "/patient/createAppointment", element: <ProtectedRoute element={<CreateAppointment />} allowedRole={1} /> },
     { path: "/patient/manageAppointments", element: <ProtectedRoute element={<ManagementAppointments />} allowedRole={1} /> },
+    { path: "/patient/viewAppointments", element: <ProtectedRoute element={<ViewAppointments />} allowedRole={1} /> },
+    {path: "/patient/manageHistorial", element: <ProtectedRoute element={<ManagementHistorial />} allowedRole={1} />},
 
 
     /*------------------------------------- RUTAS DEL ADMINISTRADOR -------------------------------------*/
@@ -58,7 +62,7 @@ export const routes = [
     { path: "/admin/products/manageProducts", element: <ProtectedRoute element={<ManageProducts />} allowedRole={3} /> },
     { path: "/admin/products/addProduct", element: <ProtectedRoute element={<AddProduct />} allowedRole={3} /> },
 
-    
+
     /*------------------------------------- RUTAS DEL DOCTOR -------------------------------------*/
     // Doctor Home
     { path: "/doctor/home", element: <ProtectedRoute element={<HomeDoctor />} allowedRole={2} /> }
